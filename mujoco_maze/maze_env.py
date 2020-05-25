@@ -22,10 +22,10 @@ import math
 import numpy as np
 import gym
 
-from environments import maze_env_utils
+from mujoco_maze import maze_env_utils
 
 # Directory that contains mujoco xml files.
-MODEL_DIR = "environments/assets"
+MODEL_DIR = os.path.dirname(os.path.abspath(__file__)) + "/assets"
 
 
 class MazeEnv(gym.Env):
@@ -60,6 +60,7 @@ class MazeEnv(gym.Env):
 
         self.MAZE_HEIGHT = height = maze_height
         self.MAZE_SIZE_SCALING = size_scaling = maze_size_scaling
+        self.t = 0  # time steps
         self._n_bins = n_bins
         self._sensor_range = sensor_range * size_scaling
         self._sensor_span = sensor_span
@@ -278,7 +279,6 @@ class MazeEnv(gym.Env):
             if row is None or col is None:
                 x = x - self._robot_x
                 y = y - self._robot_y
-                th = self._robot_ori
 
                 row, col = self._xy_to_rowcol(x, y)
                 update_view(x, y, d, row=row, col=col)
@@ -335,7 +335,6 @@ class MazeEnv(gym.Env):
 
         structure = self.MAZE_STRUCTURE
         size_scaling = self.MAZE_SIZE_SCALING
-        height = self.MAZE_HEIGHT
 
         # Draw immovable blocks and chasms.
         for i in range(len(structure)):
@@ -476,7 +475,6 @@ class MazeEnv(gym.Env):
 
     def reset(self):
         self.t = 0
-        self.trajectory = []
         self.wrapped_env.reset()
         if len(self._init_positions) > 1:
             xy = random.choice(self._init_positions)

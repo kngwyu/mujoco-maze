@@ -13,8 +13,8 @@
 # limitations under the License.
 # ==============================================================================
 
-from environments.maze_env import MazeEnv
-from environments.point import PointEnv
+from mujoco_maze.maze_env import MazeEnv
+from mujoco_maze.point import PointEnv
 
 
 class PointMazeEnv(MazeEnv):
