@@ -20,3 +20,6 @@ for maze_id in MAZE_IDS:
         max_episode_steps=1000,
         reward_threshold=-1000,
     )
+
+
+__version__ = "0.1.0"
