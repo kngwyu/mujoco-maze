@@ -1,12 +1,12 @@
 import gym
 
-MAZE_IDS = ["Maze", "Push", "Fall", "Block", "BlockMaze"]
+MAZE_IDS = ["Maze", "Push", "Fall"]  # TODO: Block, BlockMaze
 
 
 def _get_kwargs(maze_id: str) -> tuple:
     return {
         "observe_blocks": maze_id in ["Block", "BlockMaze"],
-        "pin_spin_near_agent": maze_id in ["Block", "BlockMaze"],
+        "put_spin_near_agent": maze_id in ["Block", "BlockMaze"],
     }
 
 
