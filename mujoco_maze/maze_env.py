@@ -22,6 +22,9 @@ import math
 import numpy as np
 import gym
 
+from typing import Type
+
+from mujoco_maze.agent_model import AgentModel
 from mujoco_maze import maze_env_utils
 
 # Directory that contains mujoco xml files.
@@ -29,7 +32,7 @@ MODEL_DIR = os.path.dirname(os.path.abspath(__file__)) + "/assets"
 
 
 class MazeEnv(gym.Env):
-    MODEL_CLASS = None
+    MODEL_CLASS: Type[AgentModel] = AgentModel
 
     MAZE_HEIGHT = None
     MAZE_SIZE_SCALING = None
@@ -51,10 +54,7 @@ class MazeEnv(gym.Env):
     ):
         self._maze_id = maze_id
 
-        model_cls = self.__class__.MODEL_CLASS
-        if model_cls is None:
-            raise "MODEL_CLASS unspecified!"
-        xml_path = os.path.join(MODEL_DIR, model_cls.FILE)
+        xml_path = os.path.join(MODEL_DIR, self.MODEL_CLASS.FILE)
         tree = ET.parse(xml_path)
         worldbody = tree.find(".//worldbody")
 
@@ -264,7 +264,7 @@ class MazeEnv(gym.Env):
         _, file_path = tempfile.mkstemp(text=True, suffix=".xml")
         tree.write(file_path)
 
-        self.wrapped_env = model_cls(*args, file_path=file_path, **kwargs)
+        self.wrapped_env = self.MODEL_CLASS(*args, file_path=file_path, **kwargs)
 
     def get_ori(self):
         return self.wrapped_env.get_ori()
@@ -477,7 +477,7 @@ class MazeEnv(gym.Env):
         self.t = 0
         self.wrapped_env.reset()
         if len(self._init_positions) > 1:
-            xy = random.choice(self._init_positions)
+            xy = np.random.choice(self._init_positions)
             self.wrapped_env.set_xy(xy)
         return self._get_obs()
 

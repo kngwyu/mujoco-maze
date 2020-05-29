@@ -17,19 +17,18 @@
 
 import math
 import numpy as np
-from gym import utils
-from gym.envs.mujoco import mujoco_env
+
+from mujoco_maze.agent_model import AgentModel
 
 
-class PointEnv(mujoco_env.MujocoEnv, utils.EzPickle):
+class PointEnv(AgentModel):
     FILE = "point.xml"
     ORI_IND = 2
 
     def __init__(self, file_path=None, expose_all_qpos=True):
         self._expose_all_qpos = expose_all_qpos
 
-        mujoco_env.MujocoEnv.__init__(self, file_path, 1)
-        utils.EzPickle.__init__(self)
+        super().__init__(file_path, 1)
 
     def _step(self, a):
         return self.step(a)

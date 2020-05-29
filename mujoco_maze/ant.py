@@ -17,8 +17,8 @@
 
 import math
 import numpy as np
-from gym import utils
-from gym.envs.mujoco import mujoco_env
+
+from mujoco_maze.agent_model import AgentModel
 
 
 def q_inv(a):
@@ -33,7 +33,7 @@ def q_mult(a, b):  # multiply two quaternion
     return [w, i, j, k]
 
 
-class AntEnv(mujoco_env.MujocoEnv, utils.EzPickle):
+class AntEnv(AgentModel):
     FILE = "ant.xml"
     ORI_IND = 3
 
@@ -50,8 +50,7 @@ class AntEnv(mujoco_env.MujocoEnv, utils.EzPickle):
         self._body_com_indices = {}
         self._body_comvel_indices = {}
 
-        mujoco_env.MujocoEnv.__init__(self, file_path, 5)
-        utils.EzPickle.__init__(self)
+        super().__init__(file_path, 5)
 
     def _step(self, a):
         return self.step(a)
@@ -126,9 +125,8 @@ class AntEnv(mujoco_env.MujocoEnv, utils.EzPickle):
 
     def get_ori(self):
         ori = [0, 1, 0, 0]
-        rot = self.sim.data.qpos[
-            self.__class__.ORI_IND : self.__class__.ORI_IND + 4
-        ]  # take the quaternion
+        ori_ind = self.ORI_IND
+        rot = self.sim.data.qpos[ori_ind: ori_ind + 4]  # take the quaternion
         ori = q_mult(q_mult(rot, ori), q_inv(rot))[1:3]  # project onto x-y plane
         ori = math.atan2(ori[1], ori[0])
         return ori
