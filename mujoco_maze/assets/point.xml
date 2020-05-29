@@ -22,8 +22,6 @@
             <joint name='bally' type='slide' axis='0 1 0' pos='0 0 0' />
             <joint name='rot' type='hinge' axis='0 0 1' pos='0 0 0' limited="false" />
         </body>
-        <!-- Goal / target position -->
-        <geom name="target" type="sphere" size="0.5" pos="0 8 0" rgba="1. 0. 0. 0.6" />
     </worldbody>
     <actuator>
         <!-- Those are just dummy actuators for providing ranges -->

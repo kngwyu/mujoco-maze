@@ -263,9 +263,6 @@ class MazeEnv(gym.Env):
 
         _, file_path = tempfile.mkstemp(text=True, suffix=".xml")
         tree.write(file_path)
-
-        x, y, _ = map(float, tree.find(".//geom[@name='target']").attrib["pos"].split())
-        self.goal_xy = np.array([x, y])
         self.wrapped_env = self.MODEL_CLASS(*args, file_path=file_path, **kwargs)
 
     def get_ori(self):
@@ -532,23 +529,15 @@ class MazeEnv(gym.Env):
                         return True
         return False
 
-    def _is_in_goal_position(self, pos):
-        return np.linalg.norm(pos - self.goal_xy) <= 0.6
-
     def step(self, action):
         self.t += 1
-        goal_reward = 0.0
         if self._manual_collision:
             old_pos = self.wrapped_env.get_xy()
             inner_next_obs, inner_reward, done, info = self.wrapped_env.step(action)
             new_pos = self.wrapped_env.get_xy()
             if self._is_in_collision(new_pos):
                 self.wrapped_env.set_xy(old_pos)
-
-            if self._is_in_goal_position(new_pos):
-                goal_reward = 1.0
-                done = True
         else:
             inner_next_obs, inner_reward, done, info = self.wrapped_env.step(action)
         next_obs = self._get_obs()
-        return next_obs, inner_reward + goal_reward, done, info
+        return next_obs, inner_reward, False, info
