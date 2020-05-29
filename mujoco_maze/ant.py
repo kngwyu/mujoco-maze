@@ -126,7 +126,7 @@ class AntEnv(AgentModel):
     def get_ori(self):
         ori = [0, 1, 0, 0]
         ori_ind = self.ORI_IND
-        rot = self.sim.data.qpos[ori_ind: ori_ind + 4]  # take the quaternion
+        rot = self.sim.data.qpos[ori_ind : ori_ind + 4]  # take the quaternion
         ori = q_mult(q_mult(rot, ori), q_inv(rot))[1:3]  # project onto x-y plane
         ori = math.atan2(ori[1], ori[0])
         return ori

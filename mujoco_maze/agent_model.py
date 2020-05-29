@@ -36,4 +36,3 @@ class AgentModel(ABC, MujocoEnv, EzPickle):
     @abstractmethod
     def get_ori(self) -> float:
         pass
-
