@@ -17,7 +17,6 @@
 
 import math
 import numpy as np
-import mujoco_py
 from gym import utils
 from gym.envs.mujoco import mujoco_env
 
@@ -54,16 +53,6 @@ class AntEnv(mujoco_env.MujocoEnv, utils.EzPickle):
         mujoco_env.MujocoEnv.__init__(self, file_path, 5)
         utils.EzPickle.__init__(self)
 
-    @property
-    def physics(self):
-        # check mujoco version is greater than version 1.50 to call correct physics
-        # model containing PyMjData object for getting and setting position/velocity
-        # check https://github.com/openai/mujoco-py/issues/80 for updates to api
-        if mujoco_py.get_version() >= "1.50":
-            return self.sim
-        else:
-            return self.model
-
     def _step(self, a):
         return self.step(a)
 
@@ -94,13 +83,13 @@ class AntEnv(mujoco_env.MujocoEnv, utils.EzPickle):
         if self._expose_all_qpos:
             obs = np.concatenate(
                 [
-                    self.physics.data.qpos.flat[:15],  # Ensures only ant obs.
-                    self.physics.data.qvel.flat[:14],
+                    self.sim.data.qpos.flat[:15],  # Ensures only ant obs.
+                    self.sim.data.qvel.flat[:14],
                 ]
             )
         else:
             obs = np.concatenate(
-                [self.physics.data.qpos.flat[2:15], self.physics.data.qvel.flat[:14],]
+                [self.sim.data.qpos.flat[2:15], self.sim.data.qvel.flat[:14],]
             )
 
         if self._expose_body_coms is not None:
@@ -137,7 +126,7 @@ class AntEnv(mujoco_env.MujocoEnv, utils.EzPickle):
 
     def get_ori(self):
         ori = [0, 1, 0, 0]
-        rot = self.physics.data.qpos[
+        rot = self.sim.data.qpos[
             self.__class__.ORI_IND : self.__class__.ORI_IND + 4
         ]  # take the quaternion
         ori = q_mult(q_mult(rot, ori), q_inv(rot))[1:3]  # project onto x-y plane
@@ -145,12 +134,12 @@ class AntEnv(mujoco_env.MujocoEnv, utils.EzPickle):
         return ori
 
     def set_xy(self, xy):
-        qpos = np.copy(self.physics.data.qpos)
+        qpos = np.copy(self.sim.data.qpos)
         qpos[0] = xy[0]
         qpos[1] = xy[1]
 
-        qvel = self.physics.data.qvel
+        qvel = self.sim.data.qvel
         self.set_state(qpos, qvel)
 
     def get_xy(self):
-        return self.physics.data.qpos[:2]
+        return self.sim.data.qpos[:2]

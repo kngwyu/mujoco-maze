@@ -23,7 +23,7 @@ except FileNotFoundError:
     LONG_DESCRIPTION = DESCRIPTION
 
 
-REQUIRED = ["gym", "mujoco-py"]
+REQUIRED = ["gym>=0.16.0", "mujoco-py>=1.5.0"]
 
 
 setup(
