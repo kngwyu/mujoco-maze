@@ -27,7 +27,6 @@ class PointEnv(AgentModel):
 
     def __init__(self, file_path=None, expose_all_qpos=True):
         self._expose_all_qpos = expose_all_qpos
-
         super().__init__(file_path, 1)
 
     def _step(self, a):
@@ -61,9 +60,10 @@ class PointEnv(AgentModel):
                     self.sim.data.qvel.flat[:3],
                 ]
             )
-        return np.concatenate(
-            [self.sim.data.qpos.flat[2:3], self.sim.data.qvel.flat[:3]]
-        )
+        else:
+            return np.concatenate(
+                [self.sim.data.qpos.flat[2:3], self.sim.data.qvel.flat[:3]]
+            )
 
     def reset_model(self):
         qpos = self.init_qpos + self.np_random.uniform(

@@ -264,6 +264,8 @@ class MazeEnv(gym.Env):
         _, file_path = tempfile.mkstemp(text=True, suffix=".xml")
         tree.write(file_path)
 
+        x, y, _ = map(float, tree.find(".//geom[@name='target']").attrib["pos"].split())
+        self.goal_xy = np.array([x, y])
         self.wrapped_env = self.MODEL_CLASS(*args, file_path=file_path, **kwargs)
 
     def get_ori(self):
@@ -407,7 +409,7 @@ class MazeEnv(gym.Env):
                     ((x1, y2), (x1, y1)),
                 ]
                 for seg in struct_segments:
-                    segments.append(dict(segment=seg, type=block_type,))
+                    segments.append(dict(segment=seg, type=block_type))
 
         sensor_readings = np.zeros((self._n_bins, 3))  # 3 for wall, drop-off, block
         for ray_idx in range(self._n_bins):
@@ -437,19 +439,16 @@ class MazeEnv(gym.Env):
                 # Find out which segment is intersected first.
                 first_seg = sorted(ray_segments, key=lambda x: x["distance"])[0]
                 seg_type = first_seg["type"]
-                idx = (
-                    0
-                    if seg_type == 1
-                    else 1  # Wall.
-                    if seg_type == -1
-                    else 2  # Drop-off.
-                    if maze_env_utils.can_move(seg_type)
-                    else None  # Block.
-                )
-                if first_seg["distance"] <= self._sensor_range:
-                    sensor_readings[ray_idx][idx] = (
-                        self._sensor_range - first_seg["distance"]
-                    ) / self._sensor_range
+                idx = None
+                if seg_type == 1:
+                    idx = 0  # Wall
+                elif seg_type == -1:
+                    idx = 1  # Drop-off
+                elif maze_env_utils.can_move(seg_type):
+                    idx == 2  # Block
+                sr = self._sensor_range
+                if first_seg["distance"] <= sr:
+                    sensor_readings[ray_idx][idx] = (sr - first_seg["distance"]) / sr
 
         return sensor_readings
 
@@ -533,16 +532,23 @@ class MazeEnv(gym.Env):
                         return True
         return False
 
+    def _is_in_goal_position(self, pos):
+        return np.linalg.norm(pos - self.goal_xy) <= 0.6
+
     def step(self, action):
         self.t += 1
+        goal_reward = 0.0
         if self._manual_collision:
             old_pos = self.wrapped_env.get_xy()
             inner_next_obs, inner_reward, done, info = self.wrapped_env.step(action)
             new_pos = self.wrapped_env.get_xy()
             if self._is_in_collision(new_pos):
                 self.wrapped_env.set_xy(old_pos)
+
+            if self._is_in_goal_position(new_pos):
+                goal_reward = 1.0
+                done = True
         else:
             inner_next_obs, inner_reward, done, info = self.wrapped_env.step(action)
         next_obs = self._get_obs()
-        done = False
-        return next_obs, inner_reward, done, info
+        return next_obs, inner_reward + goal_reward, done, info
