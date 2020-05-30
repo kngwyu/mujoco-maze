@@ -3,8 +3,8 @@
 Some maze environments for reinforcement learning(RL) using [mujoco-py] and
 [openai gym][gym].
 
-Thankfully, this project is based on the code from [tensorflow/models][models], [rllab]
-and [deep-skill-chaining][dsc].
+Thankfully, this project is based on the code from  [rllab],
+[tensorflow/models][models], and [deep-skill-chaining][dsc].
 
 ## License
 This project is licensed under Apache License, Version 2.0

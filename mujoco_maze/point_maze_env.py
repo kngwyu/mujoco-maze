@@ -19,3 +19,4 @@ from mujoco_maze.point import PointEnv
 
 class PointMazeEnv(MazeEnv):
     MODEL_CLASS = PointEnv
+    MANUAL_COLLISION = True

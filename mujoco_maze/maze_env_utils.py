@@ -14,10 +14,12 @@
 # ==============================================================================
 
 """Adapted from rllab maze_env_utils.py."""
+import itertools as it
 import math
+import numpy as np
 
 
-class Move(object):
+class Move:
     X = 11
     Y = 12
     Z = 13
@@ -49,10 +51,11 @@ def can_move(movable):
 
 
 def construct_maze(maze_id="Maze"):
+    R = "r"
     if maze_id == "Maze":
         structure = [
             [1, 1, 1, 1, 1],
-            [1, "r", 0, 0, 1],
+            [1, R, 0, 0, 1],
             [1, 1, 1, 0, 1],
             [1, 0, 0, 0, 1],
             [1, 1, 1, 1, 1],
@@ -60,7 +63,7 @@ def construct_maze(maze_id="Maze"):
     elif maze_id == "Push":
         structure = [
             [1, 1, 1, 1, 1],
-            [1, 0, "r", 1, 1],
+            [1, 0, R, 1, 1],
             [1, 0, Move.XY, 0, 1],
             [1, 1, 0, 1, 1],
             [1, 1, 1, 1, 1],
@@ -68,26 +71,24 @@ def construct_maze(maze_id="Maze"):
     elif maze_id == "Fall":
         structure = [
             [1, 1, 1, 1],
-            [1, "r", 0, 1],
+            [1, R, 0, 1],
             [1, 0, Move.YZ, 1],
             [1, -1, -1, 1],
             [1, 0, 0, 1],
             [1, 1, 1, 1],
         ]
     elif maze_id == "Block":
-        O = "r"
         structure = [
             [1, 1, 1, 1, 1],
-            [1, O, 0, 0, 1],
+            [1, R, 0, 0, 1],
             [1, 0, 0, 0, 1],
             [1, 0, 0, 0, 1],
             [1, 1, 1, 1, 1],
         ]
     elif maze_id == "BlockMaze":
-        O = "r"
         structure = [
             [1, 1, 1, 1],
-            [1, O, 0, 1],
+            [1, R, 0, 1],
             [1, 1, 0, 1],
             [1, 0, 0, 1],
             [1, 1, 1, 1],
@@ -98,12 +99,54 @@ def construct_maze(maze_id="Maze"):
     return structure
 
 
+class Collision:
+    """For manual collision detection.
+    """
+
+    ARROUND = np.array([[-1, 0], [1, 0], [0, -1], [0, 1]])
+    OFFSET = {False: 0.45, True: 0.5}
+
+    def __init__(
+        self, structure: list, size_scaling: float, torso_x: float, torso_y: float,
+    ) -> None:
+        h, w = len(structure), len(structure[0])
+        self.objects = []
+
+        def is_block(pos) -> bool:
+            i, j = pos
+            if 0 <= i < h and 0 <= j < w:
+                return structure[i][j] == 1
+            else:
+                return False
+
+        def offset(pos, index) -> float:
+            return self.OFFSET[is_block(pos + self.ARROUND[index])]
+
+        for i, j in it.product(range(len(structure)), range(len(structure[0]))):
+            if structure[i][j] != 1:
+                continue
+            pos = np.array([i, j])
+            y_base = i * size_scaling - torso_y
+            min_y = y_base - size_scaling * offset(pos, 0)
+            max_y = y_base + size_scaling * offset(pos, 1)
+            x_base = j * size_scaling - torso_x
+            min_x = x_base - size_scaling * offset(pos, 2)
+            max_x = x_base + size_scaling * offset(pos, 3)
+            self.objects.append((min_y, max_y, min_x, max_x))
+
+    def is_in(self, pos) -> bool:
+        x, y = pos
+        for min_y, max_y, min_x, max_x in self.objects:
+            if min_x <= x <= max_x and min_y <= y <= max_y:
+                return True
+        return False
+
+
 def line_intersect(pt1, pt2, ptA, ptB):
     """
-  Taken from https://www.cs.hmc.edu/ACM/lectures/intersections.html
-
-  this returns the intersection of Line(pt1,pt2) and Line(ptA,ptB)
-  """
+    Taken from https://www.cs.hmc.edu/ACM/lectures/intersections.html
+    Returns the intersection of Line(pt1,pt2) and Line(ptA,ptB).
+    """
 
     DET_TOLERANCE = 0.00000001
 
@@ -142,14 +185,13 @@ def line_intersect(pt1, pt2, ptA, ptB):
 
 def ray_segment_intersect(ray, segment):
     """
-  Check if the ray originated from (x, y) with direction theta intersects the line segment (x1, y1) -- (x2, y2),
-  and return the intersection point if there is one
-  """
+    Check if the ray originated from (x, y) with direction theta intersect the line
+    segment (x1, y1) -- (x2, y2), and return the intersection point if there is one.
+    """
     (x, y), theta = ray
     # (x1, y1), (x2, y2) = segment
     pt1 = (x, y)
-    len = 1
-    pt2 = (x + len * math.cos(theta), y + len * math.sin(theta))
+    pt2 = (x + math.cos(theta), y + math.sin(theta))
     xo, yo, valid, r, s = line_intersect(pt1, pt2, *segment)
     if valid and r >= 0 and 0 <= s <= 1:
         return (xo, yo)

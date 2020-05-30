@@ -15,12 +15,13 @@
 
 """Adapted from rllab maze_env.py."""
 
-import os
-import tempfile
-import xml.etree.ElementTree as ET
+import itertools as it
 import math
 import numpy as np
 import gym
+import os
+import tempfile
+import xml.etree.ElementTree as ET
 
 from typing import Callable, Type, Union
 
@@ -34,22 +35,20 @@ MODEL_DIR = os.path.dirname(os.path.abspath(__file__)) + "/assets"
 class MazeEnv(gym.Env):
     MODEL_CLASS: Type[AgentModel] = AgentModel
 
-    MAZE_HEIGHT = None
-    MAZE_SIZE_SCALING = None
+    MANUAL_COLLISION: bool = False
 
     def __init__(
         self,
         maze_id=None,
-        maze_height=0.5,
-        maze_size_scaling=8,
         n_bins=0,
         sensor_range=3.0,
         sensor_span=2 * math.pi,
         observe_blocks=False,
         put_spin_near_agent=False,
         top_down_view=False,
-        manual_collision=False,
         dense_reward=True,
+        maze_height: float = 0.5,
+        maze_size_scaling: float = 4.0,
         goal_sampler: Union[str, np.ndarray, Callable[[], np.ndarray]] = "default",
         *args,
         **kwargs,
@@ -60,8 +59,8 @@ class MazeEnv(gym.Env):
         tree = ET.parse(xml_path)
         worldbody = tree.find(".//worldbody")
 
-        self.MAZE_HEIGHT = height = maze_height
-        self.MAZE_SIZE_SCALING = size_scaling = maze_size_scaling
+        self._maze_height = height = maze_height
+        self._maze_size_scaling = size_scaling = maze_size_scaling
         self.t = 0  # time steps
         self._n_bins = n_bins
         self._sensor_range = sensor_range * size_scaling
@@ -69,17 +68,16 @@ class MazeEnv(gym.Env):
         self._observe_blocks = observe_blocks
         self._put_spin_near_agent = put_spin_near_agent
         self._top_down_view = top_down_view
-        self._manual_collision = manual_collision
 
-        self.MAZE_STRUCTURE = structure = maze_env_utils.construct_maze(
+        self._maze_structure = structure = maze_env_utils.construct_maze(
             maze_id=self._maze_id
         )
-        self.elevated = any(
-            -1 in row for row in structure
-        )  # Elevate the maze to allow for falling.
+        # Elevate the maze to allow for falling.
+        self.elevated = any(-1 in row for row in structure)
+        # Are there any movable blocks?
         self.blocks = any(
             any(maze_env_utils.can_move(r) for r in row) for row in structure
-        )  # Are there any movable blocks?
+        )
 
         torso_x, torso_y = self._find_robot()
         self._init_torso_x = torso_x
@@ -88,13 +86,16 @@ class MazeEnv(gym.Env):
             (x - torso_x, y - torso_y) for x, y in self._find_all_robots()
         ]
 
+        self._collision = maze_env_utils.Collision(
+            structure, size_scaling, torso_x, torso_y,
+        )
+
         self._xy_to_rowcol = lambda x, y: (
             2 + (y + size_scaling / 2) / size_scaling,
             2 + (x + size_scaling / 2) / size_scaling,
         )
-        self._view = np.zeros(
-            [5, 5, 3]
-        )  # walls (immovable), chasms (fall), movable blocks
+        # walls (immovable), chasms (fall), movable blocks
+        self._view = np.zeros([5, 5, 3])
 
         height_offset = 0.0
         if self.elevated:
@@ -275,7 +276,7 @@ class MazeEnv(gym.Env):
             if goal_sampler == "random":
                 self._goal_sampler = lambda: np.random.uniform((-4, -4), (20, 20))
             elif goal_sampler == "default":
-                default_goal = _default_goal(maze_id)
+                default_goal = _default_goal(maze_id, size_scaling)
                 self._goal_sampler = lambda: default_goal
             else:
                 raise NotImplementedError(f"Unknown goal_sampler: {goal_sampler}")
@@ -357,8 +358,8 @@ class MazeEnv(gym.Env):
         self._robot_y = robot_y
         self._robot_ori = self.get_ori()
 
-        structure = self.MAZE_STRUCTURE
-        size_scaling = self.MAZE_SIZE_SCALING
+        structure = self._maze_structure
+        size_scaling = self._maze_size_scaling
 
         # Draw immovable blocks and chasms.
         for i in range(len(structure)):
@@ -388,9 +389,9 @@ class MazeEnv(gym.Env):
         robot_x, robot_y, robot_z = self.wrapped_env.get_body_com("torso")[:3]
         ori = self.get_ori()
 
-        structure = self.MAZE_STRUCTURE
-        size_scaling = self.MAZE_SIZE_SCALING
-        height = self.MAZE_HEIGHT
+        structure = self._maze_structure
+        size_scaling = self._maze_size_scaling
+        height = self._maze_height
 
         segments = []
         # Get line segments (corresponding to outer boundary) of each immovable
@@ -523,49 +524,28 @@ class MazeEnv(gym.Env):
         return self.wrapped_env.action_space
 
     def _find_robot(self):
-        structure = self.MAZE_STRUCTURE
-        size_scaling = self.MAZE_SIZE_SCALING
-        for i in range(len(structure)):
-            for j in range(len(structure[0])):
-                if structure[i][j] == "r":
-                    return j * size_scaling, i * size_scaling
-        assert False, "No robot in maze specification."
+        structure = self._maze_structure
+        size_scaling = self._maze_size_scaling
+        for i, j in it.product(range(len(structure)), range(len(structure[0]))):
+            if structure[i][j] == "r":
+                return j * size_scaling, i * size_scaling
+        raise ValueError("No robot in maze specification.")
 
     def _find_all_robots(self):
-        structure = self.MAZE_STRUCTURE
-        size_scaling = self.MAZE_SIZE_SCALING
+        structure = self._maze_structure
+        size_scaling = self._maze_size_scaling
         coords = []
-        for i in range(len(structure)):
-            for j in range(len(structure[0])):
-                if structure[i][j] == "r":
-                    coords.append((j * size_scaling, i * size_scaling))
+        for i, j in it.product(range(len(structure)), range(len(structure[0]))):
+            if structure[i][j] == "r":
+                coords.append((j * size_scaling, i * size_scaling))
         return coords
-
-    def _is_in_collision(self, pos):
-        x, y = pos
-        structure = self.MAZE_STRUCTURE
-        size_scaling = self.MAZE_SIZE_SCALING
-        for i in range(len(structure)):
-            for j in range(len(structure[0])):
-                if structure[i][j] == 1:
-                    minx = j * size_scaling - size_scaling * 0.5 - self._init_torso_x
-                    maxx = j * size_scaling + size_scaling * 0.5 - self._init_torso_x
-                    miny = i * size_scaling - size_scaling * 0.5 - self._init_torso_y
-                    maxy = i * size_scaling + size_scaling * 0.5 - self._init_torso_y
-                    if minx <= x <= maxx and miny <= y <= maxy:
-                        return True
-        return False
-
-    def _is_in_goal(self, pos):
-        (np.linalg.norm(obs[:3] - goal) <= 0.6)
 
     def step(self, action):
         self.t += 1
-        if self._manual_collision:
+        if self.MANUAL_COLLISION:
             old_pos = self.wrapped_env.get_xy()
             inner_next_obs, inner_reward, _, info = self.wrapped_env.step(action)
-            new_pos = self.wrapped_env.get_xy()
-            if self._is_in_collision(new_pos):
+            if self._collision.is_in(self.wrapped_env.get_xy()):
                 self.wrapped_env.set_xy(old_pos)
         else:
             inner_next_obs, inner_reward, _, info = self.wrapped_env.step(action)
@@ -601,12 +581,12 @@ def _reward_fn(maze_id: str, dense: str) -> callable:
             raise NotImplementedError(f"Unknown maze id: {maze_id}")
 
 
-def _default_goal(maze_id: str) -> np.ndarray:
+def _default_goal(maze_id: str, scale: float) -> np.ndarray:
     if maze_id == "Maze" or maze_id == "BlockMaze":
-        return np.array([0.0, 16.0])
+        return np.array([0.0, 2.0 * scale])
     elif maze_id == "Push":
-        return np.array([0.0, 19.0])
+        return np.array([0.0, 2.375 * scale])
     elif maze_id == "Fall":
-        return np.array([0.0, 27.0, 4.5])
+        return np.array([0.0, 3.375 * scale, 4.5])
     else:
         raise NotImplementedError(f"Unknown maze id: {maze_id}")
