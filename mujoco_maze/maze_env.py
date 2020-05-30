@@ -603,7 +603,7 @@ def _reward_fn(maze_id: str, dense: str) -> callable:
 
 def _default_goal(maze_id: str) -> np.ndarray:
     if maze_id == "Maze" or maze_id == "BlockMaze":
-        return np.array([0.0, 8.0])
+        return np.array([0.0, 16.0])
     elif maze_id == "Push":
         return np.array([0.0, 19.0])
     elif maze_id == "Fall":

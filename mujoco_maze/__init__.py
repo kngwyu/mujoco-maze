@@ -12,7 +12,7 @@ def _get_kwargs(maze_id: str) -> tuple:
 
 for maze_id in MAZE_IDS:
     gym.envs.register(
-        id="AntMaze{}-v0".format(maze_id),
+        id="Ant{}-v0".format(maze_id),
         entry_point="mujoco_maze.ant_maze_env:AntMazeEnv",
         kwargs=dict(maze_id=maze_id, maze_size_scaling=8, **_get_kwargs(maze_id)),
         max_episode_steps=1000,
@@ -21,7 +21,7 @@ for maze_id in MAZE_IDS:
 
 for maze_id in MAZE_IDS:
     gym.envs.register(
-        id="PointMaze{}-v0".format(maze_id),
+        id="Point{}-v0".format(maze_id),
         entry_point="mujoco_maze.point_maze_env:PointMazeEnv",
         kwargs=dict(
             maze_id=maze_id,
