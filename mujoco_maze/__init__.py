@@ -19,6 +19,13 @@ for maze_id in MAZE_IDS:
         max_episode_steps=1000,
         reward_threshold=-1000,
     )
+    gym.envs.register(
+        id="Ant{}-v1".format(maze_id),
+        entry_point="mujoco_maze.ant_maze_env:AntMazeEnv",
+        kwargs=dict(maze_size_scaling=8.0, **_get_kwargs(maze_id)),
+        max_episode_steps=1000,
+        reward_threshold=0.9,
+    )
 
 for maze_id in MAZE_IDS:
     gym.envs.register(
@@ -27,6 +34,13 @@ for maze_id in MAZE_IDS:
         kwargs=_get_kwargs(maze_id),
         max_episode_steps=1000,
         reward_threshold=-1000,
+    )
+    gym.envs.register(
+        id="Point{}-v1".format(maze_id),
+        entry_point="mujoco_maze.point_maze_env:PointMazeEnv",
+        kwargs=dict(**_get_kwargs(maze_id), dense_reward=False),
+        max_episode_steps=1000,
+        reward_threshold=0.9
     )
 
 

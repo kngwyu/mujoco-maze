@@ -36,6 +36,8 @@ class MazeEnv(gym.Env):
     MODEL_CLASS: Type[AgentModel] = AgentModel
 
     MANUAL_COLLISION: bool = False
+    # For preventing the point from going through the wall
+    SIZE_EPS = 0.0001
 
     def __init__(
         self,
@@ -52,7 +54,7 @@ class MazeEnv(gym.Env):
         goal_sampler: Union[str, np.ndarray, Callable[[], np.ndarray]] = "default",
         *args,
         **kwargs,
-    ):
+    ) -> None:
         self._maze_id = maze_id
 
         xml_path = os.path.join(MODEL_DIR, self.MODEL_CLASS.FILE)
@@ -117,85 +119,67 @@ class MazeEnv(gym.Env):
                     struct = maze_env_utils.Move.SpinXY
                 if self.elevated and struct not in [-1]:
                     # Create elevated platform.
+                    x = j * size_scaling - torso_x
+                    y = i * size_scaling - torso_y
+                    h = height / 2 * size_scaling
+                    size = 0.5 * size_scaling + self.SIZE_EPS
                     ET.SubElement(
                         worldbody,
                         "geom",
-                        name="elevated_%d_%d" % (i, j),
-                        pos="%f %f %f"
-                        % (
-                            j * size_scaling - torso_x,
-                            i * size_scaling - torso_y,
-                            height / 2 * size_scaling,
-                        ),
-                        size="%f %f %f"
-                        % (
-                            0.5 * size_scaling,
-                            0.5 * size_scaling,
-                            height / 2 * size_scaling,
-                        ),
+                        name=f"elevated_{i}_{j}",
+                        pos=f"{x} {y} {h}",
+                        size=f"{size} {size} {h}",
                         type="box",
                         material="",
                         contype="1",
                         conaffinity="1",
                         rgba="0.9 0.9 0.9 1",
                     )
-                if struct == 1:  # Unmovable block.
+                if struct == 1:
+                    # Unmovable block.
                     # Offset all coordinates so that robot starts at the origin.
+                    x = j * size_scaling - torso_x
+                    y = i * size_scaling - torso_y
+                    h = height / 2 * size_scaling
+                    size = 0.5 * size_scaling + self.SIZE_EPS
                     ET.SubElement(
                         worldbody,
                         "geom",
-                        name="block_%d_%d" % (i, j),
-                        pos="%f %f %f"
-                        % (
-                            j * size_scaling - torso_x,
-                            i * size_scaling - torso_y,
-                            height_offset + height / 2 * size_scaling,
-                        ),
-                        size="%f %f %f"
-                        % (
-                            0.5 * size_scaling,
-                            0.5 * size_scaling,
-                            height / 2 * size_scaling,
-                        ),
+                        name=f"block_{i}_{j}",
+                        pos=f"{x} {y} {h + height_offset}",
+                        size=f"{size} {size} {h}",
                         type="box",
                         material="",
                         contype="1",
                         conaffinity="1",
                         rgba="0.4 0.4 0.4 1",
                     )
-                elif maze_env_utils.can_move(struct):  # Movable block.
+                elif maze_env_utils.can_move(struct):
+                    # Movable block.
                     # The "falling" blocks are shrunk slightly and increased in mass to
                     # ensure it can fall easily through a gap in the platform blocks.
                     name = "movable_%d_%d" % (i, j)
                     self.movable_blocks.append((name, struct))
                     falling = maze_env_utils.can_move_z(struct)
                     spinning = maze_env_utils.can_spin(struct)
-                    x_offset = 0.25 * size_scaling if spinning else 0.0
-                    y_offset = 0.0
                     shrink = 0.1 if spinning else 0.99 if falling else 1.0
                     height_shrink = 0.1 if spinning else 1.0
+                    x = j * size_scaling - torso_x + 0.25 * size_scaling if spinning else 0.0
+                    y = i * size_scaling - torso_y
+                    h = height / 2 * size_scaling * height_shrink
+                    size = 0.5 * size_scaling * shrink + self.SIZE_EPS
                     movable_body = ET.SubElement(
                         worldbody,
                         "body",
                         name=name,
-                        pos="%f %f %f"
-                        % (
-                            j * size_scaling - torso_x + x_offset,
-                            i * size_scaling - torso_y + y_offset,
-                            height_offset + height / 2 * size_scaling * height_shrink,
-                        ),
+                        pos=f"{x} {y} {height_offset + h}",
                     )
                     ET.SubElement(
                         movable_body,
                         "geom",
-                        name="block_%d_%d" % (i, j),
+                        name=f"block_{i}_{j}",
                         pos="0 0 0",
-                        size="%f %f %f"
-                        % (
-                            0.5 * size_scaling * shrink,
-                            0.5 * size_scaling * shrink,
-                            height / 2 * size_scaling * height_shrink,
-                        ),
+                        size=f"{size} {size} {h}",
                         type="box",
                         material="",
                         mass="0.001" if falling else "0.0002",
@@ -211,9 +195,9 @@ class MazeEnv(gym.Env):
                             axis="1 0 0",
                             damping="0.0",
                             limited="true" if falling else "false",
-                            range="%f %f" % (-size_scaling, size_scaling),
+                            range=f"{-size_scaling} {size_scaling}",
                             margin="0.01",
-                            name="movable_x_%d_%d" % (i, j),
+                            name=f"movable_x_{i}_{j}",
                             pos="0 0 0",
                             type="slide",
                         )
@@ -225,9 +209,9 @@ class MazeEnv(gym.Env):
                             axis="0 1 0",
                             damping="0.0",
                             limited="true" if falling else "false",
-                            range="%f %f" % (-size_scaling, size_scaling),
+                            range=f"{-size_scaling} {size_scaling}",
                             margin="0.01",
-                            name="movable_y_%d_%d" % (i, j),
+                            name=f"movable_y_{i}_{j}",
                             pos="0 0 0",
                             type="slide",
                         )
@@ -239,9 +223,9 @@ class MazeEnv(gym.Env):
                             axis="0 0 1",
                             damping="0.0",
                             limited="true",
-                            range="%f 0" % (-height_offset),
+                            range=f"{-height_offset} 0",
                             margin="0.01",
-                            name="movable_z_%d_%d" % (i, j),
+                            name=f"movable_z_{i}_{j}",
                             pos="0 0 0",
                             type="slide",
                         )
@@ -253,7 +237,7 @@ class MazeEnv(gym.Env):
                             axis="0 0 1",
                             damping="0.0",
                             limited="false",
-                            name="spinable_%d_%d" % (i, j),
+                            name=f"spinable_{i}_{j}",
                             pos="0 0 0",
                             type="ball",
                         )
@@ -545,7 +529,8 @@ class MazeEnv(gym.Env):
         if self.MANUAL_COLLISION:
             old_pos = self.wrapped_env.get_xy()
             inner_next_obs, inner_reward, _, info = self.wrapped_env.step(action)
-            if self._collision.is_in(self.wrapped_env.get_xy()):
+            new_pos = self.wrapped_env.get_xy()
+            if self._collision.is_in(old_pos, new_pos):
                 self.wrapped_env.set_xy(old_pos)
         else:
             inner_next_obs, inner_reward, _, info = self.wrapped_env.step(action)
@@ -574,9 +559,17 @@ def _reward_fn(maze_id: str, dense: str) -> callable:
             raise NotImplementedError(f"Unknown maze id: {maze_id}")
     else:
         if maze_id in ["Maze", "Push", "BlockMaze"]:
-            return lambda obs, goal: (np.linalg.norm(obs[:2] - goal) <= 0.6) * 1.0
+            return (
+                lambda obs, goal: -0.001
+                if np.linalg.norm(obs[:2] - goal) <= 0.6
+                else 1.0
+            )
         elif maze_id == "Fall":
-            return lambda obs, goal: (np.linalg.norm(obs[:3] - goal) <= 0.6) * 1.0
+            return (
+                lambda obs, goal: -0.001
+                if np.linalg.norm(obs[:3] - goal) <= 0.6
+                else 1.0
+            )
         else:
             raise NotImplementedError(f"Unknown maze id: {maze_id}")
 

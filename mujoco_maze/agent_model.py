@@ -4,7 +4,6 @@ from abc import ABC, abstractmethod
 from gym.envs.mujoco.mujoco_env import MujocoEnv
 from gym.utils import EzPickle
 import numpy as np
-from typing import Tuple
 
 
 class AgentModel(ABC, MujocoEnv, EzPickle):
@@ -22,13 +21,13 @@ class AgentModel(ABC, MujocoEnv, EzPickle):
         pass
 
     @abstractmethod
-    def get_xy(self) -> Tuple[float, float]:
+    def get_xy(self) -> np.ndarray:
         """Returns the coordinate of the agent.
         """
         pass
 
     @abstractmethod
-    def set_xy(self, xy: Tuple[float, float]) -> None:
+    def set_xy(self, xy: np.ndarray) -> None:
         """Set the coordinate of the agent.
         """
         pass

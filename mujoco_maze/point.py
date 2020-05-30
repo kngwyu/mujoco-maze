@@ -78,8 +78,7 @@ class PointEnv(AgentModel):
         return self._get_obs()
 
     def get_xy(self):
-        qpos = self.sim.data.qpos
-        return qpos[0], qpos[1]
+        return self.sim.data.qpos[:2]
 
     def set_xy(self, xy):
         qpos = np.copy(self.sim.data.qpos)

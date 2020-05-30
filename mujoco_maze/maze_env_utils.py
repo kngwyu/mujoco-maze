@@ -104,7 +104,7 @@ class Collision:
     """
 
     ARROUND = np.array([[-1, 0], [1, 0], [0, -1], [0, 1]])
-    OFFSET = {False: 0.45, True: 0.5}
+    OFFSET = {False: 0.499, True: 0.501}
 
     def __init__(
         self, structure: list, size_scaling: float, torso_x: float, torso_y: float,
@@ -134,11 +134,11 @@ class Collision:
             max_x = x_base + size_scaling * offset(pos, 3)
             self.objects.append((min_y, max_y, min_x, max_x))
 
-    def is_in(self, pos) -> bool:
-        x, y = pos
-        for min_y, max_y, min_x, max_x in self.objects:
-            if min_x <= x <= max_x and min_y <= y <= max_y:
-                return True
+    def is_in(self, old_pos, new_pos) -> bool:
+        for x, y in (new_pos, (old_pos + new_pos) / 2):
+            for min_y, max_y, min_x, max_x in self.objects:
+                if min_x <= x <= max_x and min_y <= y <= max_y:
+                    return True
         return False
 
 
