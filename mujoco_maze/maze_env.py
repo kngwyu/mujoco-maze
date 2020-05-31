@@ -535,7 +535,7 @@ class MazeEnv(gym.Env):
             old_pos = self.wrapped_env.get_xy()
             inner_next_obs, inner_reward, _, info = self.wrapped_env.step(action)
             new_pos = self.wrapped_env.get_xy()
-            if self._collision.is_in(new_pos):
+            if self._collision.is_in(old_pos, new_pos):
                 self.wrapped_env.set_xy(old_pos)
         else:
             inner_next_obs, inner_reward, _, info = self.wrapped_env.step(action)
