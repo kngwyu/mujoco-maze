@@ -104,7 +104,7 @@ class Collision:
     """
 
     ARROUND = np.array([[-1, 0], [1, 0], [0, -1], [0, 1]])
-    OFFSET = {False: 0.499, True: 0.501}
+    OFFSET = {False: 0.5, True: 0.55}
 
     def __init__(
         self, structure: list, size_scaling: float, torso_x: float, torso_y: float,
