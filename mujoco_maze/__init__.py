@@ -40,7 +40,7 @@ for maze_id in MAZE_IDS:
         entry_point="mujoco_maze.point_maze_env:PointMazeEnv",
         kwargs=dict(**_get_kwargs(maze_id), dense_reward=False),
         max_episode_steps=1000,
-        reward_threshold=0.9
+        reward_threshold=0.9,
     )
 
 

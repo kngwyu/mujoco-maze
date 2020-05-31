@@ -137,7 +137,7 @@ class AntEnv(AgentModel):
         qpos[1] = xy[1]
 
         qvel = self.sim.data.qvel
-        self.set_state(qpos, qvel)
+        self.set_state_without_forwarding(qpos, qvel)
 
     def get_xy(self):
-        return self.sim.data.qpos[:2]
+        return np.copy(self.sim.data.qpos[:2])

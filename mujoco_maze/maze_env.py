@@ -70,6 +70,7 @@ class MazeEnv(gym.Env):
         self._observe_blocks = observe_blocks
         self._put_spin_near_agent = put_spin_near_agent
         self._top_down_view = top_down_view
+        self._collision_coef = 0.1
 
         self._maze_structure = structure = maze_env_utils.construct_maze(
             maze_id=self._maze_id
@@ -164,7 +165,11 @@ class MazeEnv(gym.Env):
                     spinning = maze_env_utils.can_spin(struct)
                     shrink = 0.1 if spinning else 0.99 if falling else 1.0
                     height_shrink = 0.1 if spinning else 1.0
-                    x = j * size_scaling - torso_x + 0.25 * size_scaling if spinning else 0.0
+                    x = (
+                        j * size_scaling - torso_x + 0.25 * size_scaling
+                        if spinning
+                        else 0.0
+                    )
                     y = i * size_scaling - torso_y
                     h = height / 2 * size_scaling * height_shrink
                     size = 0.5 * size_scaling * shrink + self.SIZE_EPS
@@ -530,7 +535,7 @@ class MazeEnv(gym.Env):
             old_pos = self.wrapped_env.get_xy()
             inner_next_obs, inner_reward, _, info = self.wrapped_env.step(action)
             new_pos = self.wrapped_env.get_xy()
-            if self._collision.is_in(old_pos, new_pos):
+            if self._collision.is_in(new_pos):
                 self.wrapped_env.set_xy(old_pos)
         else:
             inner_next_obs, inner_reward, _, info = self.wrapped_env.step(action)
