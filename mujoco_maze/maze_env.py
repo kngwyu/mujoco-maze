@@ -76,10 +76,10 @@ class MazeEnv(gym.Env):
             maze_id=self._maze_id
         )
         # Elevate the maze to allow for falling.
-        self.elevated = any(-1 in row for row in structure)
+        self.elevated = any(maze_env_utils.MazeCell.CHASM in row for row in structure)
         # Are there any movable blocks?
         self.blocks = any(
-            any(maze_env_utils.can_move(r) for r in row) for row in structure
+            any(r.can_move() for r in row) for row in structure
         )
 
         torso_x, torso_y = self._find_robot()
@@ -116,9 +116,9 @@ class MazeEnv(gym.Env):
         for i in range(len(structure)):
             for j in range(len(structure[0])):
                 struct = structure[i][j]
-                if struct == "r" and self._put_spin_near_agent:
+                if struct.is_robot() and self._put_spin_near_agent:
                     struct = maze_env_utils.Move.SpinXY
-                if self.elevated and struct not in [-1]:
+                if self.elevated and not struct.is_chasm():
                     # Create elevated platform.
                     x = j * size_scaling - torso_x
                     y = i * size_scaling - torso_y
@@ -136,7 +136,7 @@ class MazeEnv(gym.Env):
                         conaffinity="1",
                         rgba="0.9 0.9 0.9 1",
                     )
-                if struct == 1:
+                if struct.is_block():
                     # Unmovable block.
                     # Offset all coordinates so that robot starts at the origin.
                     x = j * size_scaling - torso_x
@@ -155,14 +155,14 @@ class MazeEnv(gym.Env):
                         conaffinity="1",
                         rgba="0.4 0.4 0.4 1",
                     )
-                elif maze_env_utils.can_move(struct):
+                elif struct.can_move():
                     # Movable block.
                     # The "falling" blocks are shrunk slightly and increased in mass to
                     # ensure it can fall easily through a gap in the platform blocks.
                     name = "movable_%d_%d" % (i, j)
                     self.movable_blocks.append((name, struct))
-                    falling = maze_env_utils.can_move_z(struct)
-                    spinning = maze_env_utils.can_spin(struct)
+                    falling = struct.can_move_z()
+                    spinning = struct.can_spin()
                     shrink = 0.1 if spinning else 0.99 if falling else 1.0
                     height_shrink = 0.1 if spinning else 1.0
                     x = (
@@ -192,7 +192,7 @@ class MazeEnv(gym.Env):
                         conaffinity="1",
                         rgba="0.9 0.1 0.1 1",
                     )
-                    if maze_env_utils.can_move_x(struct):
+                    if struct.can_move_x():
                         ET.SubElement(
                             movable_body,
                             "joint",
@@ -206,7 +206,7 @@ class MazeEnv(gym.Env):
                             pos="0 0 0",
                             type="slide",
                         )
-                    if maze_env_utils.can_move_y(struct):
+                    if struct.can_move_y():
                         ET.SubElement(
                             movable_body,
                             "joint",
@@ -220,7 +220,7 @@ class MazeEnv(gym.Env):
                             pos="0 0 0",
                             type="slide",
                         )
-                    if maze_env_utils.can_move_z(struct):
+                    if struct.can_move_z():
                         ET.SubElement(
                             movable_body,
                             "joint",
@@ -234,7 +234,7 @@ class MazeEnv(gym.Env):
                             pos="0 0 0",
                             type="slide",
                         )
-                    if maze_env_utils.can_spin(struct):
+                    if struct.can_spin():
                         ET.SubElement(
                             movable_body,
                             "joint",
@@ -353,13 +353,13 @@ class MazeEnv(gym.Env):
         # Draw immovable blocks and chasms.
         for i in range(len(structure)):
             for j in range(len(structure[0])):
-                if structure[i][j] == 1:  # Wall.
+                if structure[i][j].is_block():  # Wall.
                     update_view(
                         j * size_scaling - self._init_torso_x,
                         i * size_scaling - self._init_torso_y,
                         0,
                     )
-                if structure[i][j] == -1:  # Chasm.
+                if structure[i][j].is_chasm():  # Chasm.
                     update_view(
                         j * size_scaling - self._init_torso_x,
                         i * size_scaling - self._init_torso_y,
@@ -387,7 +387,7 @@ class MazeEnv(gym.Env):
         # block or drop-off.
         for i in range(len(structure)):
             for j in range(len(structure[0])):
-                if structure[i][j] in [1, -1]:  # There's a wall or drop-off.
+                if structure[i][j].is_wall_or_chasm():  # There's a wall or drop-off.
                     cx = j * size_scaling - self._init_torso_x
                     cy = i * size_scaling - self._init_torso_y
                     x1 = cx - 0.5 * size_scaling
@@ -456,7 +456,7 @@ class MazeEnv(gym.Env):
                     idx = 0  # Wall
                 elif seg_type == -1:
                     idx = 1  # Drop-off
-                elif maze_env_utils.can_move(seg_type):
+                elif seg_type.can_move():
                     idx == 2  # Block
                 sr = self._sensor_range
                 if first_seg["distance"] <= sr:
@@ -516,7 +516,7 @@ class MazeEnv(gym.Env):
         structure = self._maze_structure
         size_scaling = self._maze_size_scaling
         for i, j in it.product(range(len(structure)), range(len(structure[0]))):
-            if structure[i][j] == "r":
+            if structure[i][j].is_robot():
                 return j * size_scaling, i * size_scaling
         raise ValueError("No robot in maze specification.")
 
@@ -525,7 +525,7 @@ class MazeEnv(gym.Env):
         size_scaling = self._maze_size_scaling
         coords = []
         for i, j in it.product(range(len(structure)), range(len(structure[0]))):
-            if structure[i][j] == "r":
+            if structure[i][j].is_robot():
                 coords.append((j * size_scaling, i * size_scaling))
         return coords
 

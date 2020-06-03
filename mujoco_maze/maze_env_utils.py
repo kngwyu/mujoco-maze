@@ -14,12 +14,20 @@
 # ==============================================================================
 
 """Adapted from rllab maze_env_utils.py."""
+from enum import Enum
 import itertools as it
 import math
 import numpy as np
 
 
-class Move:
+class MazeCell(Enum):
+    # Robot: Start position
+    ROBOT = -1
+    # Blocks
+    EMPTY = 0
+    BLOCK = 1
+    CHASM = 2
+    # Moves
     X = 11
     Y = 12
     Z = 13
@@ -29,69 +37,88 @@ class Move:
     XYZ = 17
     SpinXY = 18
 
+    def is_block(self) -> bool:
+        return self == self.BLOCK
 
-def can_move_x(movable):
-    return movable in [Move.X, Move.XY, Move.XZ, Move.XYZ, Move.SpinXY]
+    def is_chasm(self) -> bool:
+        return self == self.CHASM
 
+    def is_robot(self) -> bool:
+        return self == self.ROBOT
 
-def can_move_y(movable):
-    return movable in [Move.Y, Move.XY, Move.YZ, Move.XYZ, Move.SpinXY]
+    def is_wall_or_chasm(self) -> bool:
+        return self in [self.BLOCK, self.CHASM]
 
+    def can_move_x(self) -> bool:
+        return self in [
+            self.X,
+            self.XY,
+            self.XZ,
+            self.XYZ,
+            self.SpinXY,
+        ]
 
-def can_move_z(movable):
-    return movable in [Move.Z, Move.XZ, Move.YZ, Move.XYZ]
+    def can_move_y(self):
+        return self in [
+            self.Y,
+            self.XY,
+            self.YZ,
+            self.XYZ,
+            self.SpinXY,
+        ]
 
+    def can_move_z(self):
+        return self in [self.Z, self.XZ, self.YZ, self.XYZ]
 
-def can_spin(movable):
-    return movable in [Move.SpinXY]
+    def can_spin(self):
+        return self == self.SpinXY
 
-
-def can_move(movable):
-    return can_move_x(movable) or can_move_y(movable) or can_move_z(movable)
+    def can_move(self):
+        return self.can_move_x() or self.can_move_y() or self.can_move_z()
 
 
 def construct_maze(maze_id="Maze"):
-    R = "r"
+    E, B, C, R = MazeCell.EMPTY, MazeCell.BLOCK, MazeCell.CHASM, MazeCell.ROBOT
     if maze_id == "Maze":
         structure = [
-            [1, 1, 1, 1, 1],
-            [1, R, 0, 0, 1],
-            [1, 1, 1, 0, 1],
-            [1, 0, 0, 0, 1],
-            [1, 1, 1, 1, 1],
+            [B, B, B, B, B],
+            [B, R, E, E, B],
+            [B, B, B, E, B],
+            [B, E, E, E, B],
+            [B, B, B, B, B],
         ]
     elif maze_id == "Push":
         structure = [
-            [1, 1, 1, 1, 1],
-            [1, 0, R, 1, 1],
-            [1, 0, Move.XY, 0, 1],
-            [1, 1, 0, 1, 1],
-            [1, 1, 1, 1, 1],
+            [B, B, B, B, B],
+            [B, E, R, B, B],
+            [B, E, MazeCell.XY, E, B],
+            [B, B, E, B, B],
+            [B, B, B, B, B],
         ]
     elif maze_id == "Fall":
         structure = [
-            [1, 1, 1, 1],
-            [1, R, 0, 1],
-            [1, 0, Move.YZ, 1],
-            [1, -1, -1, 1],
-            [1, 0, 0, 1],
-            [1, 1, 1, 1],
+            [B, B, B, B],
+            [B, R, E, B],
+            [B, E, MazeCell.YZ, B],
+            [B, C, C, B],
+            [B, E, E, B],
+            [B, B, B, B],
         ]
     elif maze_id == "Block":
         structure = [
-            [1, 1, 1, 1, 1],
-            [1, R, 0, 0, 1],
-            [1, 0, 0, 0, 1],
-            [1, 0, 0, 0, 1],
-            [1, 1, 1, 1, 1],
+            [B, B, B, B, B],
+            [B, R, E, E, B],
+            [B, E, E, E, B],
+            [B, E, E, E, B],
+            [B, B, B, B, B],
         ]
     elif maze_id == "BlockMaze":
         structure = [
-            [1, 1, 1, 1],
-            [1, R, 0, 1],
-            [1, 1, 0, 1],
-            [1, 0, 0, 1],
-            [1, 1, 1, 1],
+            [B, B, B, B],
+            [B, R, E, B],
+            [B, B, E, B],
+            [B, E, E, B],
+            [B, B, B, B],
         ]
     else:
         raise NotImplementedError("The provided MazeId %s is not recognized" % maze_id)
@@ -115,7 +142,7 @@ class Collision:
         def is_block(pos) -> bool:
             i, j = pos
             if 0 <= i < h and 0 <= j < w:
-                return structure[i][j] == 1
+                return structure[i][j].is_block()
             else:
                 return False
 
@@ -123,7 +150,7 @@ class Collision:
             return self.OFFSET[is_block(pos + self.ARROUND[index])]
 
         for i, j in it.product(range(len(structure)), range(len(structure[0]))):
-            if structure[i][j] != 1:
+            if not structure[i][j].is_block():
                 continue
             pos = np.array([i, j])
             y_base = i * size_scaling - torso_y

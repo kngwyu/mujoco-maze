@@ -17,6 +17,8 @@ mujoco-py = ">=1.5"
 [tool.poetry.dev-dependencies]
 pytest = "^3.0"
 
+[tool.poetry.scripts]
+test = "pytest:main"
 
 [tool.black]
 line-length = 88
