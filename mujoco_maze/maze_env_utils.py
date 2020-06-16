@@ -77,55 +77,6 @@ class MazeCell(Enum):
         return self.can_move_x() or self.can_move_y() or self.can_move_z()
 
 
-def construct_maze(maze_id="Maze"):
-    E, B, C, R = MazeCell.EMPTY, MazeCell.BLOCK, MazeCell.CHASM, MazeCell.ROBOT
-    if maze_id == "Maze":
-        structure = [
-            [B, B, B, B, B],
-            [B, R, E, E, B],
-            [B, B, B, E, B],
-            [B, E, E, E, B],
-            [B, B, B, B, B],
-        ]
-    elif maze_id == "Push":
-        structure = [
-            [B, B, B, B, B],
-            [B, E, R, B, B],
-            [B, E, MazeCell.XY, E, B],
-            [B, B, E, B, B],
-            [B, B, B, B, B],
-        ]
-    elif maze_id == "Fall":
-        structure = [
-            [B, B, B, B],
-            [B, R, E, B],
-            [B, E, MazeCell.YZ, B],
-            [B, C, C, B],
-            [B, E, E, B],
-            [B, B, B, B],
-        ]
-    elif maze_id == "Block":
-        structure = [
-            [B, B, B, B, B],
-            [B, R, E, E, B],
-            [B, E, E, E, B],
-            [B, E, E, E, B],
-            [B, B, B, B, B],
-        ]
-    elif maze_id == "BlockMaze":
-        structure = [
-            [B, B, B, B],
-            [B, R, E, B],
-            [B, B, E, B],
-            [B, E, E, B],
-            [B, B, B, B],
-        ]
-    else:
-        raise NotImplementedError("The provided MazeId %s is not recognized" % maze_id)
-
-    return structure
-
-
 class Collision:
     """For manual collision detection.
     """

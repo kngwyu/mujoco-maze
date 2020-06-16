@@ -16,17 +16,17 @@
 """Adapted from rllab maze_env.py."""
 
 import itertools as it
-import math
 import numpy as np
 import gym
 import os
 import tempfile
 import xml.etree.ElementTree as ET
 
-from typing import Callable, Type, Union
+from typing import Type
 
 from mujoco_maze.agent_model import AgentModel
 from mujoco_maze import maze_env_utils
+from mujoco_maze import maze_task
 
 # Directory that contains mujoco xml files.
 MODEL_DIR = os.path.dirname(os.path.abspath(__file__)) + "/assets"
@@ -36,26 +36,23 @@ class MazeEnv(gym.Env):
     MODEL_CLASS: Type[AgentModel] = AgentModel
 
     MANUAL_COLLISION: bool = False
-    # For preventing the point from going through the wall
-    SIZE_EPS = 0.0001
+    BLOCK_EPS: float = 0.0001
 
     def __init__(
         self,
-        maze_id=None,
-        n_bins=0,
-        sensor_range=3.0,
-        sensor_span=2 * math.pi,
-        observe_blocks=False,
-        put_spin_near_agent=False,
-        top_down_view=False,
-        dense_reward=True,
+        maze_task: Type[maze_task.MazeTask] = maze_task.SingleGoalSparseEMaze(),
+        n_bins: int = 0,
+        sensor_range: float = 3.0,
+        sensor_span: float = 2 * np.pi,
+        observe_blocks: float = False,
+        put_spin_near_agent: float = False,
+        top_down_view: float = False,
         maze_height: float = 0.5,
         maze_size_scaling: float = 4.0,
-        goal_sampler: Union[str, np.ndarray, Callable[[], np.ndarray]] = "default",
         *args,
         **kwargs,
     ) -> None:
-        self._maze_id = maze_id
+        self._task = maze_task()
 
         xml_path = os.path.join(MODEL_DIR, self.MODEL_CLASS.FILE)
         tree = ET.parse(xml_path)
@@ -72,15 +69,11 @@ class MazeEnv(gym.Env):
         self._top_down_view = top_down_view
         self._collision_coef = 0.1
 
-        self._maze_structure = structure = maze_env_utils.construct_maze(
-            maze_id=self._maze_id
-        )
+        self._maze_structure = structure = self._task.create_maze()
         # Elevate the maze to allow for falling.
         self.elevated = any(maze_env_utils.MazeCell.CHASM in row for row in structure)
         # Are there any movable blocks?
-        self.blocks = any(
-            any(r.can_move() for r in row) for row in structure
-        )
+        self.blocks = any(any(r.can_move() for r in row) for row in structure)
 
         torso_x, torso_y = self._find_robot()
         self._init_torso_x = torso_x
@@ -117,13 +110,13 @@ class MazeEnv(gym.Env):
             for j in range(len(structure[0])):
                 struct = structure[i][j]
                 if struct.is_robot() and self._put_spin_near_agent:
-                    struct = maze_env_utils.Move.SpinXY
+                    struct = maze_env_utils.MazeCell.SpinXY
                 if self.elevated and not struct.is_chasm():
                     # Create elevated platform.
                     x = j * size_scaling - torso_x
                     y = i * size_scaling - torso_y
                     h = height / 2 * size_scaling
-                    size = 0.5 * size_scaling + self.SIZE_EPS
+                    size = 0.5 * size_scaling + self.BLOCK_EPS
                     ET.SubElement(
                         worldbody,
                         "geom",
@@ -142,7 +135,7 @@ class MazeEnv(gym.Env):
                     x = j * size_scaling - torso_x
                     y = i * size_scaling - torso_y
                     h = height / 2 * size_scaling
-                    size = 0.5 * size_scaling + self.SIZE_EPS
+                    size = 0.5 * size_scaling + self.BLOCK_EPS
                     ET.SubElement(
                         worldbody,
                         "geom",
@@ -172,7 +165,7 @@ class MazeEnv(gym.Env):
                     )
                     y = i * size_scaling - torso_y
                     h = height / 2 * size_scaling * height_shrink
-                    size = 0.5 * size_scaling * shrink + self.SIZE_EPS
+                    size = 0.5 * size_scaling * shrink + self.BLOCK_EPS
                     movable_body = ET.SubElement(
                         worldbody,
                         "body",
@@ -256,29 +249,6 @@ class MazeEnv(gym.Env):
         _, file_path = tempfile.mkstemp(text=True, suffix=".xml")
         tree.write(file_path)
         self.wrapped_env = self.MODEL_CLASS(*args, file_path=file_path, **kwargs)
-
-        # Set reward function
-        self._reward_fn = _reward_fn(maze_id, dense_reward)
-
-        # Set goal sampler
-        if isinstance(goal_sampler, str):
-            if goal_sampler == "random":
-                self._goal_sampler = lambda: np.random.uniform((-4, -4), (20, 20))
-            elif goal_sampler == "default":
-                default_goal = _default_goal(maze_id, size_scaling)
-                self._goal_sampler = lambda: default_goal
-            else:
-                raise NotImplementedError(f"Unknown goal_sampler: {goal_sampler}")
-        elif isinstance(goal_sampler, np.ndarray):
-            self._goal_sampler = lambda: goal_sampler
-        elif callable(goal_sampler):
-            self._goal_sampler = goal_sampler
-        else:
-            raise ValueError(f"Invalid goal_sampler: {goal_sampler}")
-        self.goal = self._goal_sampler()
-
-        # Set goal function
-        self._goal_fn = _goal_fn(maze_id)
 
     def get_ori(self):
         return self.wrapped_env.get_ori()
@@ -488,7 +458,7 @@ class MazeEnv(gym.Env):
         self.t = 0
         self.wrapped_env.reset()
         # Sample a new goal
-        self.goal = self._goal_sampler()
+        self._task.sample_goals(self._maze_size_scaling)
         if len(self._init_positions) > 1:
             xy = np.random.choice(self._init_positions)
             self.wrapped_env.set_xy(xy)
@@ -540,51 +510,6 @@ class MazeEnv(gym.Env):
         else:
             inner_next_obs, inner_reward, _, info = self.wrapped_env.step(action)
         next_obs = self._get_obs()
-        outer_reward = self._reward_fn(next_obs, self.goal)
-        done = self._goal_fn(next_obs, self.goal)
+        outer_reward = self._task.reward(next_obs)
+        done = self._task.termination(next_obs)
         return next_obs, inner_reward + outer_reward, done, info
-
-
-def _goal_fn(maze_id: str) -> callable:
-    if maze_id in ["Maze", "Push", "BlockMaze"]:
-        return lambda obs, goal: np.linalg.norm(obs[:2] - goal) <= 0.6
-    elif maze_id == "Fall":
-        return lambda obs, goal: np.linalg.norm(obs[:3] - goal) <= 0.6
-    else:
-        raise NotImplementedError(f"Unknown maze id: {maze_id}")
-
-
-def _reward_fn(maze_id: str, dense: str) -> callable:
-    if dense:
-        if maze_id in ["Maze", "Push", "BlockMaze"]:
-            return lambda obs, goal: -np.sum(np.square(obs[:2] - goal)) ** 0.5
-        elif maze_id == "Fall":
-            return lambda obs, goal: -np.sum(np.square(obs[:3] - goal)) ** 0.5
-        else:
-            raise NotImplementedError(f"Unknown maze id: {maze_id}")
-    else:
-        if maze_id in ["Maze", "Push", "BlockMaze"]:
-            return (
-                lambda obs, goal: 1.0
-                if np.linalg.norm(obs[:2] - goal) <= 0.6
-                else -0.0001
-            )
-        elif maze_id == "Fall":
-            return (
-                lambda obs, goal: 1.0
-                if np.linalg.norm(obs[:3] - goal) <= 0.6
-                else -0.0001
-            )
-        else:
-            raise NotImplementedError(f"Unknown maze id: {maze_id}")
-
-
-def _default_goal(maze_id: str, scale: float) -> np.ndarray:
-    if maze_id == "Maze" or maze_id == "BlockMaze":
-        return np.array([0.0, 2.0 * scale])
-    elif maze_id == "Push":
-        return np.array([0.0, 2.375 * scale])
-    elif maze_id == "Fall":
-        return np.array([0.0, 3.375 * scale, 4.5])
-    else:
-        raise NotImplementedError(f"Unknown maze id: {maze_id}")
