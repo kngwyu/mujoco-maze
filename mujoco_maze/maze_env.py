@@ -40,7 +40,7 @@ class MazeEnv(gym.Env):
 
     def __init__(
         self,
-        maze_task: Type[maze_task.MazeTask] = maze_task.SingleGoalSparseEMaze(),
+        maze_task: Type[maze_task.MazeTask] = maze_task.SingleGoalSparseUMaze,
         n_bins: int = 0,
         sensor_range: float = 3.0,
         sensor_span: float = 2 * np.pi,
@@ -52,7 +52,7 @@ class MazeEnv(gym.Env):
         *args,
         **kwargs,
     ) -> None:
-        self._task = maze_task()
+        self._task = maze_task(maze_size_scaling)
 
         xml_path = os.path.join(MODEL_DIR, self.MODEL_CLASS.FILE)
         tree = ET.parse(xml_path)
@@ -246,8 +246,23 @@ class MazeEnv(gym.Env):
             if "name" not in geom.attrib:
                 raise Exception("Every geom of the torso must have a name " "defined")
 
+        # Set goals
+        asset = tree.find(".//asset")
+        for i, goal in enumerate(self._task.goals):
+            ET.SubElement(asset, "material", name=f"goal{i}", rgba=goal.rbga_str())
+            z = goal.pos[2] if goal.dim >= 3 else 0.0
+            ET.SubElement(
+                worldbody,
+                "site",
+                name=f"goal_site{i}",
+                pos=f"{goal.pos[0]} {goal.pos[1]} {z}",
+                size=f"{maze_size_scaling * 0.1}",
+                material=f"goal{i}",
+            )
+
         _, file_path = tempfile.mkstemp(text=True, suffix=".xml")
         tree.write(file_path)
+        self.world_tree = tree
         self.wrapped_env = self.MODEL_CLASS(*args, file_path=file_path, **kwargs)
 
     def get_ori(self):
@@ -458,11 +473,17 @@ class MazeEnv(gym.Env):
         self.t = 0
         self.wrapped_env.reset()
         # Sample a new goal
-        self._task.sample_goals(self._maze_size_scaling)
+        if self._task.sample_goals():
+            self.set_marker()
         if len(self._init_positions) > 1:
             xy = np.random.choice(self._init_positions)
             self.wrapped_env.set_xy(xy)
         return self._get_obs()
+
+    def set_marker(self):
+        for i, goal in enumerate(self._task.goals):
+            idx = self.model.site_name2id(f"goal{i}")
+            self.data.site_xpos[idx][: len(goal.pos)] = goal.pos
 
     @property
     def viewer(self):

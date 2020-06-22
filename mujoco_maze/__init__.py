@@ -3,7 +3,7 @@ import gym
 from mujoco_maze.maze_task import TaskRegistry
 
 
-MAZE_IDS = ["Maze", "Push", "Fall"]  # TODO: Block, BlockMaze
+MAZE_IDS = ["Maze", "Push", "Fall", "4Rooms"]  # TODO: Block, BlockMaze
 
 
 def _get_kwargs(maze_id: str) -> tuple:
