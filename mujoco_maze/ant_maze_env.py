@@ -13,8 +13,8 @@
 # limitations under the License.
 # ==============================================================================
 
-from mujoco_maze.maze_env import MazeEnv
 from mujoco_maze.ant import AntEnv
+from mujoco_maze.maze_env import MazeEnv
 
 
 class AntMazeEnv(MazeEnv):

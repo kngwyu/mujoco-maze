@@ -16,17 +16,16 @@
 """Adapted from rllab maze_env.py."""
 
 import itertools as it
-import numpy as np
-import gym
 import os
 import tempfile
 import xml.etree.ElementTree as ET
+from typing import Tuple, Type
 
-from typing import Type
+import gym
+import numpy as np
 
+from mujoco_maze import maze_env_utils, maze_task
 from mujoco_maze.agent_model import AgentModel
-from mujoco_maze import maze_env_utils
-from mujoco_maze import maze_task
 
 # Directory that contains mujoco xml files.
 MODEL_DIR = os.path.dirname(os.path.abspath(__file__)) + "/assets"
@@ -34,9 +33,7 @@ MODEL_DIR = os.path.dirname(os.path.abspath(__file__)) + "/assets"
 
 class MazeEnv(gym.Env):
     MODEL_CLASS: Type[AgentModel] = AgentModel
-
     MANUAL_COLLISION: bool = False
-    BLOCK_EPS: float = 0.0001
 
     def __init__(
         self,
@@ -116,7 +113,7 @@ class MazeEnv(gym.Env):
                     x = j * size_scaling - torso_x
                     y = i * size_scaling - torso_y
                     h = height / 2 * size_scaling
-                    size = 0.5 * size_scaling + self.BLOCK_EPS
+                    size = 0.5 * size_scaling
                     ET.SubElement(
                         worldbody,
                         "geom",
@@ -135,7 +132,7 @@ class MazeEnv(gym.Env):
                     x = j * size_scaling - torso_x
                     y = i * size_scaling - torso_y
                     h = height / 2 * size_scaling
-                    size = 0.5 * size_scaling + self.BLOCK_EPS
+                    size = 0.5 * size_scaling
                     ET.SubElement(
                         worldbody,
                         "geom",
@@ -165,7 +162,7 @@ class MazeEnv(gym.Env):
                     )
                     y = i * size_scaling - torso_y
                     h = height / 2 * size_scaling * height_shrink
-                    size = 0.5 * size_scaling * shrink + self.BLOCK_EPS
+                    size = 0.5 * size_scaling * shrink
                     movable_body = ET.SubElement(
                         worldbody,
                         "body",
@@ -264,9 +261,37 @@ class MazeEnv(gym.Env):
         tree.write(file_path)
         self.world_tree = tree
         self.wrapped_env = self.MODEL_CLASS(*args, file_path=file_path, **kwargs)
+        self.observation_space = self._get_obs_space()
 
-    def get_ori(self):
+    def get_ori(self) -> float:
         return self.wrapped_env.get_ori()
+
+    def _get_obs_space(self) -> gym.spaces.Box:
+        shape = self._get_obs().shape
+        high = np.inf * np.ones(shape)
+        low = -high
+        # Set velocity limits
+        wrapped_obs_space = self.wrapped_env.observation_space
+        high[: wrapped_obs_space.shape[0]] = wrapped_obs_space.high
+        low[: wrapped_obs_space.shape[0]] = wrapped_obs_space.low
+        # Set coordinate limits
+        low[0], high[0], low[1], high[1] = self._xy_limits()
+        # Set orientation limits
+        return gym.spaces.Box(low, high)
+
+    def _xy_limits(self) -> Tuple[float, float, float, float]:
+        xmin, ymin, xmax, ymax = 100, 100, -100, -100
+        structure = self._maze_structure
+        for i, j in it.product(range(len(structure)), range(len(structure[0]))):
+            if structure[i][j].is_block():
+                continue
+            xmin, xmax = min(xmin, j), max(xmax, j)
+            ymin, ymax = min(ymin, i), max(ymax, i)
+        x0, y0 = self._init_torso_x, self._init_torso_y
+        scaling = self._maze_size_scaling
+        xmin, xmax = (xmin - 0.5) * scaling - x0, (xmax + 0.5) * scaling - x0
+        ymin, ymax = (ymin - 0.5) * scaling - y0, (ymax + 0.5) * scaling - y0
+        return xmin, xmax, ymin, ymax
 
     def get_top_down_view(self):
         self._view = np.zeros_like(self._view)
@@ -493,13 +518,6 @@ class MazeEnv(gym.Env):
         return self.wrapped_env.render(*args, **kwargs)
 
     @property
-    def observation_space(self):
-        shape = self._get_obs().shape
-        high = np.inf * np.ones(shape)
-        low = -high
-        return gym.spaces.Box(low, high)
-
-    @property
     def action_space(self):
         return self.wrapped_env.action_space
 
@@ -531,6 +549,7 @@ class MazeEnv(gym.Env):
         else:
             inner_next_obs, inner_reward, _, info = self.wrapped_env.step(action)
         next_obs = self._get_obs()
+        inner_reward = self._task.scale_inner_reward(inner_reward)
         outer_reward = self._task.reward(next_obs)
         done = self._task.termination(next_obs)
         return next_obs, inner_reward + outer_reward, done, info

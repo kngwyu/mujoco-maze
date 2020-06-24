@@ -16,54 +16,53 @@
 """Wrapper for creating the ant environment in gym_mujoco."""
 
 import math
+from typing import Optional, Tuple
+
+import gym
 import numpy as np
 
 from mujoco_maze.agent_model import AgentModel
 
 
 class PointEnv(AgentModel):
+    VELOCITY_LIMITS: float = 100.0
     FILE = "point.xml"
     ORI_IND = 2
 
-    def __init__(self, file_path=None, expose_all_qpos=True):
-        self._expose_all_qpos = expose_all_qpos
+    def __init__(self, file_path: Optional[str] = None):
         super().__init__(file_path, 1)
+        high = np.inf * np.ones(6)
+        high[3:] = self.VELOCITY_LIMITS
+        high[self.ORI_IND] = np.pi
+        low = -high
+        self.observation_space = gym.spaces.Box(low, high)
 
-    def _step(self, a):
-        return self.step(a)
-
-    def step(self, action):
+    def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, dict]:
         qpos = np.copy(self.sim.data.qpos)
         qpos[2] += action[1]
+        # Clip orientation
+        if qpos[2] < -np.pi:
+            qpos[2] += np.pi * 2
+        elif np.pi < qpos[2]:
+            qpos[2] -= np.pi * 2
         ori = qpos[2]
-        # compute increment in each direction
-        dx = math.cos(ori) * action[0]
-        dy = math.sin(ori) * action[0]
-        # ensure that the robot is within reasonable range
-        qpos[0] = np.clip(qpos[0] + dx, -100, 100)
-        qpos[1] = np.clip(qpos[1] + dy, -100, 100)
-        qvel = self.sim.data.qvel
+        # Compute increment in each direction
+        qpos[0] += math.cos(ori) * action[0]
+        qpos[1] += math.sin(ori) * action[0]
+        qvel = np.clip(self.sim.data.qvel, -self.VELOCITY_LIMITS, self.VELOCITY_LIMITS)
         self.set_state(qpos, qvel)
         for _ in range(0, self.frame_skip):
             self.sim.step()
         next_obs = self._get_obs()
-        reward = 0
-        done = False
-        info = {}
-        return next_obs, reward, done, info
+        return next_obs, 0.0, False, {}
 
     def _get_obs(self):
-        if self._expose_all_qpos:
-            return np.concatenate(
-                [
-                    self.sim.data.qpos.flat[:3],  # Only point-relevant coords.
-                    self.sim.data.qvel.flat[:3],
-                ]
-            )
-        else:
-            return np.concatenate(
-                [self.sim.data.qpos.flat[2:3], self.sim.data.qvel.flat[:3]]
-            )
+        return np.concatenate(
+            [
+                self.sim.data.qpos.flat[:3],  # Only point-relevant coords.
+                self.sim.data.qvel.flat[:3],
+            ]
+        )
 
     def reset_model(self):
         qpos = self.init_qpos + self.np_random.uniform(
@@ -86,7 +85,7 @@ class PointEnv(AgentModel):
         qpos[1] = xy[1]
 
         qvel = self.sim.data.qvel
-        self.set_state_without_forward(qpos, qvel)
+        self.set_state(qpos, qvel)
 
     def get_ori(self):
         return self.sim.data.qpos[self.ORI_IND]

@@ -16,6 +16,8 @@
 """Wrapper for creating the ant environment in gym_mujoco."""
 
 import math
+from typing import Tuple
+
 import numpy as np
 
 from mujoco_maze.agent_model import AgentModel
@@ -37,39 +39,23 @@ class AntEnv(AgentModel):
     FILE = "ant.xml"
     ORI_IND = 3
 
-    def __init__(
-        self,
-        file_path=None,
-        expose_all_qpos=True,
-        expose_body_coms=None,
-        expose_body_comvels=None,
-    ):
-        self._expose_all_qpos = expose_all_qpos
-        self._expose_body_coms = expose_body_coms
-        self._expose_body_comvels = expose_body_comvels
-        self._body_com_indices = {}
-        self._body_comvel_indices = {}
-
+    def __init__(self, file_path: Optional[str] = None) -> None:
         super().__init__(file_path, 5)
 
-    def _step(self, a):
-        return self.step(a)
-
-    def step(self, a):
+    def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, dict]:
         xposbefore = self.get_body_com("torso")[0]
-        self.do_simulation(a, self.frame_skip)
+        self.do_simulation(action, self.frame_skip)
         xposafter = self.get_body_com("torso")[0]
         forward_reward = (xposafter - xposbefore) / self.dt
-        ctrl_cost = 0.5 * np.square(a).sum()
+        ctrl_cost = 0.5 * np.square(action).sum()
         survive_reward = 1.0
         reward = forward_reward - ctrl_cost + survive_reward
         _ = self.state_vector()
-        done = False
         ob = self._get_obs()
         return (
             ob,
             reward,
-            done,
+            False,
             dict(
                 reward_forward=forward_reward,
                 reward_ctrl=-ctrl_cost,
@@ -79,34 +65,12 @@ class AntEnv(AgentModel):
 
     def _get_obs(self):
         # No cfrc observation
-        if self._expose_all_qpos:
-            obs = np.concatenate(
-                [
-                    self.sim.data.qpos.flat[:15],  # Ensures only ant obs.
-                    self.sim.data.qvel.flat[:14],
-                ]
-            )
-        else:
-            obs = np.concatenate(
-                [self.sim.data.qpos.flat[2:15], self.sim.data.qvel.flat[:14],]
-            )
-
-        if self._expose_body_coms is not None:
-            for name in self._expose_body_coms:
-                com = self.get_body_com(name)
-                if name not in self._body_com_indices:
-                    indices = range(len(obs), len(obs) + len(com))
-                    self._body_com_indices[name] = indices
-                obs = np.concatenate([obs, com])
-
-        if self._expose_body_comvels is not None:
-            for name in self._expose_body_comvels:
-                comvel = self.get_body_comvel(name)
-                if name not in self._body_comvel_indices:
-                    indices = range(len(obs), len(obs) + len(comvel))
-                    self._body_comvel_indices[name] = indices
-                obs = np.concatenate([obs, comvel])
-        return obs
+        return np.concatenate(
+            [
+                self.sim.data.qpos.flat[:15],  # Ensures only ant obs.
+                self.sim.data.qvel.flat[:14],
+            ]
+        )
 
     def reset_model(self):
         qpos = self.init_qpos + self.np_random.uniform(
@@ -137,7 +101,7 @@ class AntEnv(AgentModel):
         qpos[1] = xy[1]
 
         qvel = self.sim.data.qvel
-        self.set_state_without_forwarding(qpos, qvel)
+        self.set_state(qpos, qvel)
 
     def get_xy(self):
         return np.copy(self.sim.data.qpos[:2])

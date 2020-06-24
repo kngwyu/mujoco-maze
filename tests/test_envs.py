@@ -1,6 +1,7 @@
 import gym
-import mujoco_maze
 import pytest
+
+import mujoco_maze
 
 
 @pytest.mark.parametrize("maze_id", mujoco_maze.MAZE_IDS)

@@ -2,7 +2,6 @@ import gym
 
 from mujoco_maze.maze_task import TaskRegistry
 
-
 MAZE_IDS = ["Maze", "Push", "Fall", "4Rooms"]  # TODO: Block, BlockMaze
 
 

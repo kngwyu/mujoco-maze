@@ -14,9 +14,10 @@
 # ==============================================================================
 
 """Adapted from rllab maze_env_utils.py."""
-from enum import Enum
 import itertools as it
 import math
+from enum import Enum
+
 import numpy as np
 
 
@@ -112,7 +113,7 @@ class Collision:
             max_x = x_base + size_scaling * offset(pos, 3)
             self.objects.append((min_y, max_y, min_x, max_x))
 
-    def is_in(self, old_pos, new_pos) -> bool:
+    def is_in(self, old_pos: np.ndarray, new_pos: np.ndarray) -> bool:
         # Heuristics to prevent the agent from going through the wall
         for x, y in ((old_pos + new_pos) / 2, new_pos):
             for min_y, max_y, min_x, max_x in self.objects:

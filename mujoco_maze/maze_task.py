@@ -9,6 +9,7 @@ Rgb = Tuple[float, float, float]
 
 RED = (0.7, 0.1, 0.1)
 GREEN = (0.1, 0.7, 0.1)
+BLUE = (0.1, 0.1, 0.7)
 
 
 class MazeGoal:
@@ -49,6 +50,9 @@ class MazeTask(ABC):
             if goal.neighbor(obs):
                 return True
         return False
+
+    def scale_inner_reward(self, inner_reward: float) -> float:
+        return inner_reward
 
     @abstractmethod
     def reward(self, obs: np.ndarray) -> float:
