@@ -25,7 +25,7 @@ from mujoco_maze.agent_model import AgentModel
 
 
 class PointEnv(AgentModel):
-    VELOCITY_LIMITS: float = 100.0
+    VELOCITY_LIMITS: float = 10.0
     FILE = "point.xml"
     ORI_IND = 2
 

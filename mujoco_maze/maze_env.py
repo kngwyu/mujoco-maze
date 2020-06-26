@@ -95,7 +95,7 @@ class MazeEnv(gym.Env):
             # Increase initial z-pos of ant.
             height_offset = height * size_scaling
             torso = tree.find(".//body[@name='torso']")
-            torso.set("pos", "0 0 %.2f" % (0.75 + height_offset))
+            torso.set("pos", f"0 0 {0.75 + height_offset:%.2f}")
         if self.blocks:
             # If there are movable blocks, change simulation settings to perform
             # better contact detection.

@@ -16,7 +16,7 @@
 """Wrapper for creating the ant environment in gym_mujoco."""
 
 import math
-from typing import Tuple
+from typing import Optional, Tuple
 
 import numpy as np
 
