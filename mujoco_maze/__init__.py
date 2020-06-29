@@ -2,8 +2,6 @@ import gym
 
 from mujoco_maze.maze_task import TaskRegistry
 
-MAZE_IDS = ["Maze", "Push", "Fall", "4Rooms"]  # TODO: Block, BlockMaze
-
 
 def _get_kwargs(maze_id: str) -> tuple:
     return {
@@ -13,8 +11,8 @@ def _get_kwargs(maze_id: str) -> tuple:
     }
 
 
-for maze_id in MAZE_IDS:
-    for i, task_cls in enumerate(TaskRegistry.REGISTRY[maze_id]):
+for maze_id in TaskRegistry.keys():
+    for i, task_cls in enumerate(TaskRegistry.tasks(maze_id)):
         gym.envs.register(
             id=f"Ant{maze_id}-v{i}",
             entry_point="mujoco_maze.ant_maze_env:AntMazeEnv",
@@ -23,8 +21,8 @@ for maze_id in MAZE_IDS:
             reward_threshold=task_cls.REWARD_THRESHOLD,
         )
 
-for maze_id in MAZE_IDS:
-    for i, task_cls in enumerate(TaskRegistry.REGISTRY[maze_id]):
+for maze_id in TaskRegistry.keys():
+    for i, task_cls in enumerate(TaskRegistry.tasks(maze_id)):
         gym.envs.register(
             id=f"Point{maze_id}-v{i}",
             entry_point="mujoco_maze.point_maze_env:PointMazeEnv",

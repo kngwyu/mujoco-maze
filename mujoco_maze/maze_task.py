@@ -142,6 +142,43 @@ class SingleGoalDenseFall(SingleGoalSparseFall):
         return -self.goals[0].euc_dist(obs)
 
 
+class SingleGoalSparse2Rooms(MazeTask):
+    REWARD_THRESHOLD: float = 0.9
+
+    def __init__(self, scale: float) -> None:
+        super().__init__(scale)
+        self.goals = [MazeGoal(np.array([0.0, 4.0 * scale]))]
+
+    def reward(self, obs: np.ndarray) -> float:
+        return 1.0 if self.termination(obs) else -0.0001
+
+    @staticmethod
+    def create_maze() -> List[List[MazeCell]]:
+        E, B, R = MazeCell.EMPTY, MazeCell.BLOCK, MazeCell.ROBOT
+        return [
+            [B, B, B, B, B, B, B, B],
+            [B, R, E, E, E, E, E, B],
+            [B, E, E, E, E, E, E, B],
+            [B, B, B, B, B, E, B, B],
+            [B, E, E, E, E, E, E, B],
+            [B, E, E, E, E, E, E, B],
+            [B, B, B, B, B, B, B, B],
+        ]
+
+
+class SingleGoalDense2Rooms(SingleGoalSparse2Rooms):
+    REWARD_THRESHOLD: float = 1000.0
+
+    def reward(self, obs: np.ndarray) -> float:
+        return -self.goals[0].euc_dist(obs)
+
+
+class SubGoalSparse2Rooms(SingleGoalSparse2Rooms):
+    def __init__(self, scale: float) -> None:
+        super().__init__(scale)
+        self.goals.append(MazeGoal(np.array([5.0 * scale, 0.0 * scale]), 0.5, GREEN))
+
+
 class SingleGoalSparse4Rooms(MazeTask):
     REWARD_THRESHOLD: float = 0.9
 
@@ -171,11 +208,17 @@ class SingleGoalSparse4Rooms(MazeTask):
         ]
 
 
+class SingleGoalDense4Rooms(SingleGoalSparse4Rooms):
+    REWARD_THRESHOLD: float = 1000.0
+
+    def reward(self, obs: np.ndarray) -> float:
+        return -self.goals[0].euc_dist(obs)
+
+
 class SubGoalSparse4Rooms(SingleGoalSparse4Rooms):
     def __init__(self, scale: float) -> None:
         super().__init__(scale)
-        self.goals = [
-            MazeGoal(np.array([6.0 * scale, 6.0 * scale])),
+        self.goals += [
             MazeGoal(np.array([0.0 * scale, 6.0 * scale]), 0.5, GREEN),
             MazeGoal(np.array([6.0 * scale, 0.0 * scale]), 0.5, GREEN),
         ]
@@ -183,8 +226,21 @@ class SubGoalSparse4Rooms(SingleGoalSparse4Rooms):
 
 class TaskRegistry:
     REGISTRY: Dict[str, List[Type[MazeTask]]] = {
-        "Maze": [SingleGoalDenseUMaze, SingleGoalSparseUMaze],
+        "UMaze": [SingleGoalDenseUMaze, SingleGoalSparseUMaze],
         "Push": [SingleGoalDensePush, SingleGoalSparsePush],
         "Fall": [SingleGoalDenseFall, SingleGoalSparseFall],
-        "4Rooms": [SingleGoalSparse4Rooms, SubGoalSparse4Rooms],
+        "2Rooms": [
+            SingleGoalDense2Rooms,
+            SingleGoalSparse2Rooms,
+            SubGoalSparse2Rooms,
+        ],
+        "4Rooms": [SingleGoalSparse4Rooms, SingleGoalDense4Rooms, SubGoalSparse4Rooms],
     }
+
+    @staticmethod
+    def keys() -> List[str]:
+        return list(TaskRegistry.REGISTRY.keys())
+
+    @staticmethod
+    def tasks(key: str) -> List[Type[MazeTask]]:
+        return TaskRegistry.REGISTRY[key]
