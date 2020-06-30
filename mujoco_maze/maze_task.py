@@ -150,7 +150,10 @@ class SingleGoalSparse2Rooms(MazeTask):
         self.goals = [MazeGoal(np.array([0.0, 4.0 * scale]))]
 
     def reward(self, obs: np.ndarray) -> float:
-        return 1.0 if self.termination(obs) else -0.0001
+        for goal in self.goals:
+            if goal.neighbor(obs):
+                return goal.reward_scale
+        return -0.0001
 
     @staticmethod
     def create_maze() -> List[List[MazeCell]]:
