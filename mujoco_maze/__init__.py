@@ -3,20 +3,13 @@ import gym
 from mujoco_maze.maze_task import TaskRegistry
 
 
-def _get_kwargs(maze_id: str) -> tuple:
-    return {
-        "maze_id": maze_id,
-        "observe_blocks": maze_id in ["Block", "BlockMaze"],
-        "put_spin_near_agent": maze_id in ["Block", "BlockMaze"],
-    }
-
-
 for maze_id in TaskRegistry.keys():
     for i, task_cls in enumerate(TaskRegistry.tasks(maze_id)):
+        scaling = task_cls.SCALING.ant
         gym.envs.register(
             id=f"Ant{maze_id}-v{i}",
             entry_point="mujoco_maze.ant_maze_env:AntMazeEnv",
-            kwargs=dict(maze_task=task_cls, maze_size_scaling=8.0),
+            kwargs=dict(maze_task=task_cls, maze_size_scaling=scaling),
             max_episode_steps=1000,
             reward_threshold=task_cls.REWARD_THRESHOLD,
         )
@@ -26,7 +19,7 @@ for maze_id in TaskRegistry.keys():
         gym.envs.register(
             id=f"Point{maze_id}-v{i}",
             entry_point="mujoco_maze.point_maze_env:PointMazeEnv",
-            kwargs=dict(maze_task=task_cls),
+            kwargs=dict(maze_task=task_cls, maze_size_scaling=scaling),
             max_episode_steps=1000,
             reward_threshold=task_cls.REWARD_THRESHOLD,
         )

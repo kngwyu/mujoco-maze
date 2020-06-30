@@ -41,8 +41,6 @@ class MazeEnv(gym.Env):
         n_bins: int = 0,
         sensor_range: float = 3.0,
         sensor_span: float = 2 * np.pi,
-        observe_blocks: float = False,
-        put_spin_near_agent: float = False,
         top_down_view: float = False,
         maze_height: float = 0.5,
         maze_size_scaling: float = 4.0,
@@ -61,8 +59,8 @@ class MazeEnv(gym.Env):
         self._n_bins = n_bins
         self._sensor_range = sensor_range * size_scaling
         self._sensor_span = sensor_span
-        self._observe_blocks = observe_blocks
-        self._put_spin_near_agent = put_spin_near_agent
+        self._observe_blocks = self._task.OBSERVE_BLOCKS
+        self._put_spin_near_agent = self._task.PUT_SPIN_NEAR_AGENT
         self._top_down_view = top_down_view
         self._collision_coef = 0.1
 

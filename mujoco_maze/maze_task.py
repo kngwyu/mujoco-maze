@@ -40,8 +40,16 @@ class MazeGoal:
         return np.sum(np.square(obs[: self.dim] - self.pos)) ** 0.5
 
 
+class Scaling(NamedTuple):
+    ant: float
+    point: float
+
+
 class MazeTask(ABC):
     REWARD_THRESHOLD: float
+    SCALING: Scaling = Scaling(8.0, 4.0)
+    OBSERVE_BLOCKS: bool = False
+    PUT_SPIN_NEAR_AGENT: bool = False
 
     def __init__(self, scale: float) -> None:
         self.scale = scale
