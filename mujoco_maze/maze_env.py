@@ -268,7 +268,7 @@ class MazeEnv(gym.Env):
 
     def _get_obs_space(self) -> gym.spaces.Box:
         shape = self._get_obs().shape
-        high = np.inf * np.ones(shape)
+        high = np.inf * np.ones(shape, dtype=np.float32)
         low = -high
         # Set velocity limits
         wrapped_obs_space = self.wrapped_env.observation_space

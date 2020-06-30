@@ -31,7 +31,7 @@ class PointEnv(AgentModel):
 
     def __init__(self, file_path: Optional[str] = None):
         super().__init__(file_path, 1)
-        high = np.inf * np.ones(6)
+        high = np.inf * np.ones(6, dtype=np.float32)
         high[3:] = self.VELOCITY_LIMITS
         high[self.ORI_IND] = np.pi
         low = -high

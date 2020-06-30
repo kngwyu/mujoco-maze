@@ -1,15 +1,20 @@
 from abc import ABC, abstractmethod
-from typing import Dict, List, Tuple, Type
+from typing import Dict, List, NamedTuple, Type
 
 import numpy as np
 
 from mujoco_maze.maze_env_utils import MazeCell
 
-Rgb = Tuple[float, float, float]
 
-RED = (0.7, 0.1, 0.1)
-GREEN = (0.1, 0.7, 0.1)
-BLUE = (0.1, 0.1, 0.7)
+class Rgb(NamedTuple):
+    red: float
+    green: float
+    blue: float
+
+
+RED = Rgb(0.7, 0.1, 0.1)
+GREEN = Rgb(0.1, 0.7, 0.1)
+BLUE = Rgb(0.1, 0.1, 0.7)
 
 
 class MazeGoal:
