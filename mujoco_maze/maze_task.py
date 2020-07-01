@@ -1,3 +1,6 @@
+"""Maze tasks that are defined by their map, termination condition, and goals.
+"""
+
 from abc import ABC, abstractmethod
 from typing import Dict, List, NamedTuple, Type
 

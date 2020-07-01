@@ -1,19 +1,10 @@
-# Copyright 2018 The TensorFlow Authors All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
+"""
+Mujoco Maze environment.
+Based on `models`_ and `rllab`_.
 
-"""Adapted from rllab maze_env.py."""
+.. _models: https://github.com/tensorflow/models/tree/master/research/efficient-hrl
+.. _rllab: https://github.com/rll/rllab
+"""
 
 import itertools as it
 import os
@@ -32,11 +23,9 @@ MODEL_DIR = os.path.dirname(os.path.abspath(__file__)) + "/assets"
 
 
 class MazeEnv(gym.Env):
-    MODEL_CLASS: Type[AgentModel] = AgentModel
-    MANUAL_COLLISION: bool = False
-
     def __init__(
         self,
+        model_cls: Type[AgentModel],
         maze_task: Type[maze_task.MazeTask] = maze_task.SingleGoalSparseUMaze,
         n_bins: int = 0,
         sensor_range: float = 3.0,
@@ -50,7 +39,7 @@ class MazeEnv(gym.Env):
     ) -> None:
         self._task = maze_task(maze_size_scaling)
 
-        xml_path = os.path.join(MODEL_DIR, self.MODEL_CLASS.FILE)
+        xml_path = os.path.join(MODEL_DIR, model_cls.FILE)
         tree = ET.parse(xml_path)
         worldbody = tree.find(".//worldbody")
 
@@ -260,7 +249,7 @@ class MazeEnv(gym.Env):
         _, file_path = tempfile.mkstemp(text=True, suffix=".xml")
         tree.write(file_path)
         self.world_tree = tree
-        self.wrapped_env = self.MODEL_CLASS(*args, file_path=file_path, **kwargs)
+        self.wrapped_env = model_cls(*args, file_path=file_path, **kwargs)
         self.observation_space = self._get_obs_space()
 
     def get_ori(self) -> float:
@@ -541,7 +530,7 @@ class MazeEnv(gym.Env):
 
     def step(self, action):
         self.t += 1
-        if self.MANUAL_COLLISION:
+        if self.wrapped_env.MANUAL_COLLISION:
             old_pos = self.wrapped_env.get_xy()
             inner_next_obs, inner_reward, _, info = self.wrapped_env.step(action)
             new_pos = self.wrapped_env.get_xy()

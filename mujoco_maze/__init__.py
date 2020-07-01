@@ -1,5 +1,15 @@
+"""
+Mujoco Maze
+----------
+
+A maze environment using mujoco that supports custom tasks and robots.
+"""
+
+
 import gym
 
+from mujoco_maze.ant import AntEnv
+from mujoco_maze.point import PointEnv
 from mujoco_maze.maze_task import TaskRegistry
 
 
@@ -7,8 +17,9 @@ for maze_id in TaskRegistry.keys():
     for i, task_cls in enumerate(TaskRegistry.tasks(maze_id)):
         gym.envs.register(
             id=f"Ant{maze_id}-v{i}",
-            entry_point="mujoco_maze.ant_maze_env:AntMazeEnv",
+            entry_point="mujoco_maze.maze_env:MazeEnv",
             kwargs=dict(
+                model_cls=AntEnv,
                 maze_task=task_cls,
                 maze_size_scaling=task_cls.MAZE_SIZE_SCALING.ant,
                 inner_reward_scaling=task_cls.INNER_REWARD_SCALING,
@@ -21,8 +32,9 @@ for maze_id in TaskRegistry.keys():
     for i, task_cls in enumerate(TaskRegistry.tasks(maze_id)):
         gym.envs.register(
             id=f"Point{maze_id}-v{i}",
-            entry_point="mujoco_maze.point_maze_env:PointMazeEnv",
+            entry_point="mujoco_maze.maze_env:MazeEnv",
             kwargs=dict(
+                model_cls=PointEnv,
                 maze_task=task_cls,
                 maze_size_scaling=task_cls.MAZE_SIZE_SCALING.point,
                 inner_reward_scaling=task_cls.INNER_REWARD_SCALING,

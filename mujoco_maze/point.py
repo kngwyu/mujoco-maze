@@ -1,19 +1,10 @@
-# Copyright 2018 The TensorFlow Authors All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
+"""
+A ball-like robot as an explorer in the maze.
+Based on `models`_ and `rllab`_.
 
-"""Wrapper for creating the ant environment in gym_mujoco."""
+.. _models: https://github.com/tensorflow/models/tree/master/research/efficient-hrl
+.. _rllab: https://github.com/rll/rllab
+"""
 
 import math
 from typing import Optional, Tuple
@@ -27,6 +18,7 @@ from mujoco_maze.agent_model import AgentModel
 class PointEnv(AgentModel):
     FILE: str = "point.xml"
     ORI_IND: int = 2
+    MANUAL_COLLISION: bool = True
 
     VELOCITY_LIMITS: float = 10.0
 

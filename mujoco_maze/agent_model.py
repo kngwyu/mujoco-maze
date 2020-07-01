@@ -1,4 +1,4 @@
-"""Common API definition for Ant and Point.
+"""Common APIs for defining mujoco robot.
 """
 from abc import ABC, abstractmethod
 
@@ -10,6 +10,7 @@ from gym.utils import EzPickle
 class AgentModel(ABC, MujocoEnv, EzPickle):
     FILE: str
     ORI_IND: int
+    MANUAL_COLLISION: bool
 
     def __init__(self, file_path: str, frame_skip: int) -> None:
         MujocoEnv.__init__(self, file_path, frame_skip)
