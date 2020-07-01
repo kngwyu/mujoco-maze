@@ -51,7 +51,7 @@ class Scaling(NamedTuple):
 class MazeTask(ABC):
     REWARD_THRESHOLD: float
     MAZE_SIZE_SCALING: Scaling = Scaling(8.0, 4.0)
-    INNER_REWARD_SCALING: float = 1e-4
+    INNER_REWARD_SCALING: float = 0.0
     OBSERVE_BLOCKS: bool = False
     PUT_SPIN_NEAR_AGENT: bool = False
 
@@ -103,7 +103,6 @@ class SingleGoalSparseUMaze(MazeTask):
 class SingleGoalDenseUMaze(SingleGoalSparseUMaze):
     REWARD_THRESHOLD: float = 1000.0
 
-
     def reward(self, obs: np.ndarray) -> float:
         return -self.goals[0].euc_dist(obs)
 
@@ -127,7 +126,6 @@ class SingleGoalSparsePush(SingleGoalSparseUMaze):
 
 class SingleGoalDensePush(SingleGoalSparsePush):
     REWARD_THRESHOLD: float = 1000.0
-
 
     def reward(self, obs: np.ndarray) -> float:
         return -self.goals[0].euc_dist(obs)
@@ -154,14 +152,13 @@ class SingleGoalSparseFall(SingleGoalSparseUMaze):
 class SingleGoalDenseFall(SingleGoalSparseFall):
     REWARD_THRESHOLD: float = 1000.0
 
-
     def reward(self, obs: np.ndarray) -> float:
         return -self.goals[0].euc_dist(obs)
 
 
 class SingleGoalSparse2Rooms(MazeTask):
     REWARD_THRESHOLD: float = 0.9
-    SCALING: Scaling = Scaling(4.0, 4.0)
+    MAZE_SIZE_SCALING: Scaling = Scaling(4.0, 4.0)
 
     def __init__(self, scale: float) -> None:
         super().__init__(scale)
@@ -189,7 +186,6 @@ class SingleGoalSparse2Rooms(MazeTask):
 
 class SingleGoalDense2Rooms(SingleGoalSparse2Rooms):
     REWARD_THRESHOLD: float = 1000.0
-
 
     def reward(self, obs: np.ndarray) -> float:
         return -self.goals[0].euc_dist(obs)
@@ -234,7 +230,6 @@ class SingleGoalSparse4Rooms(MazeTask):
 class SingleGoalDense4Rooms(SingleGoalSparse4Rooms):
     REWARD_THRESHOLD: float = 1000.0
 
-
     def reward(self, obs: np.ndarray) -> float:
         return -self.goals[0].euc_dist(obs)
 
@@ -253,7 +248,7 @@ class TaskRegistry:
         "UMaze": [SingleGoalDenseUMaze, SingleGoalSparseUMaze],
         "Push": [SingleGoalDensePush, SingleGoalSparsePush],
         "Fall": [SingleGoalDenseFall, SingleGoalSparseFall],
-        "2Rooms": [SingleGoalDense2Rooms, SingleGoalSparse2Rooms, SubGoalSparse2Rooms,],
+        "2Rooms": [SingleGoalDense2Rooms, SingleGoalSparse2Rooms, SubGoalSparse2Rooms],
         "4Rooms": [SingleGoalSparse4Rooms, SingleGoalDense4Rooms, SubGoalSparse4Rooms],
     }
 
