@@ -44,6 +44,7 @@ class MazeEnv(gym.Env):
         top_down_view: float = False,
         maze_height: float = 0.5,
         maze_size_scaling: float = 4.0,
+        inner_reward_scaling: float = 1.0,
         *args,
         **kwargs,
     ) -> None:
@@ -55,6 +56,7 @@ class MazeEnv(gym.Env):
 
         self._maze_height = height = maze_height
         self._maze_size_scaling = size_scaling = maze_size_scaling
+        self._inner_reward_scaling = inner_reward_scaling
         self.t = 0  # time steps
         self._n_bins = n_bins
         self._sensor_range = sensor_range * size_scaling
@@ -495,9 +497,10 @@ class MazeEnv(gym.Env):
     def reset(self):
         self.t = 0
         self.wrapped_env.reset()
-        # Sample a new goal
+        # Samples a new goal
         if self._task.sample_goals():
             self.set_marker()
+        # Samples a new start position
         if len(self._init_positions) > 1:
             xy = np.random.choice(self._init_positions)
             self.wrapped_env.set_xy(xy)
@@ -547,7 +550,7 @@ class MazeEnv(gym.Env):
         else:
             inner_next_obs, inner_reward, _, info = self.wrapped_env.step(action)
         next_obs = self._get_obs()
-        inner_reward = self._task.scale_inner_reward(inner_reward)
+        inner_reward = self._inner_reward_scaling * inner_reward
         outer_reward = self._task.reward(next_obs)
         done = self._task.termination(next_obs)
         return next_obs, inner_reward + outer_reward, done, info

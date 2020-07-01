@@ -16,11 +16,22 @@
 """Wrapper for creating the ant environment in gym_mujoco."""
 
 import math
-from typing import Optional, Tuple
+from typing import Callable, Optional, Tuple
 
 import numpy as np
 
 from mujoco_maze.agent_model import AgentModel
+
+
+ForwardRewardFn = Callable[[float, float], float]
+
+
+def forward_reward_vabs(xy_velocity: float) -> float:
+    return np.sum(np.abs(xy_velocity))
+
+
+def forward_reward_vnorm(xy_velocity: float) -> float:
+    return np.linalg.norm(xy_velocity)
 
 
 def q_inv(a):
@@ -36,31 +47,37 @@ def q_mult(a, b):  # multiply two quaternion
 
 
 class AntEnv(AgentModel):
-    FILE = "ant.xml"
-    ORI_IND = 3
+    FILE: str = "ant.xml"
+    ORI_IND: int = 3
 
-    def __init__(self, file_path: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        file_path: Optional[str] = None,
+        ctrl_cost_weight: float = 0.5,
+        forward_reward_fn: ForwardRewardFn = forward_reward_vnorm,
+    ) -> None:
+        self._ctrl_cost_weight = ctrl_cost_weight
+        self._forward_reward_fn = forward_reward_fn
         super().__init__(file_path, 5)
 
+    def _forward_reward(self, xy_pos_before: np.ndarray) -> float:
+        xy_pos_after = self.sim.data.qpos[:2].copy()
+        xy_velocity = (xy_pos_after - xy_pos_before) / self.dt
+        return self._forward_reward_fn(xy_velocity)
+
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, dict]:
-        xposbefore = self.get_body_com("torso")[0]
+        xy_pos_before = self.sim.data.qpos[:2].copy()
         self.do_simulation(action, self.frame_skip)
-        xposafter = self.get_body_com("torso")[0]
-        forward_reward = (xposafter - xposbefore) / self.dt
-        ctrl_cost = 0.5 * np.square(action).sum()
-        survive_reward = 1.0
-        reward = forward_reward - ctrl_cost + survive_reward
-        _ = self.state_vector()
+
+        forward_reward = self._forward_reward(xy_pos_before)
+        ctrl_cost = self._ctrl_cost_weight * np.square(action).sum()
+
         ob = self._get_obs()
         return (
             ob,
-            reward,
+            forward_reward - ctrl_cost,
             False,
-            dict(
-                reward_forward=forward_reward,
-                reward_ctrl=-ctrl_cost,
-                reward_survive=survive_reward,
-            ),
+            dict(reward_forward=forward_reward, reward_ctrl=-ctrl_cost,),
         )
 
     def _get_obs(self):
@@ -84,9 +101,6 @@ class AntEnv(AgentModel):
         self.set_state(qpos, qvel)
         return self._get_obs()
 
-    def viewer_setup(self):
-        self.viewer.cam.distance = self.model.stat.extent * 0.5
-
     def get_ori(self):
         ori = [0, 1, 0, 0]
         ori_ind = self.ORI_IND
@@ -96,7 +110,7 @@ class AntEnv(AgentModel):
         return ori
 
     def set_xy(self, xy):
-        qpos = np.copy(self.sim.data.qpos)
+        qpos = self.sim.data.qpos.copy()
         qpos[0] = xy[0]
         qpos[1] = xy[1]
 

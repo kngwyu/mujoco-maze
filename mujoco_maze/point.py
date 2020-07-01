@@ -25,9 +25,10 @@ from mujoco_maze.agent_model import AgentModel
 
 
 class PointEnv(AgentModel):
+    FILE: str = "point.xml"
+    ORI_IND: int = 2
+
     VELOCITY_LIMITS: float = 10.0
-    FILE = "point.xml"
-    ORI_IND = 2
 
     def __init__(self, file_path: Optional[str] = None):
         super().__init__(file_path, 1)
