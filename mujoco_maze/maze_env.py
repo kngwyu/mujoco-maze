@@ -26,7 +26,7 @@ class MazeEnv(gym.Env):
     def __init__(
         self,
         model_cls: Type[AgentModel],
-        maze_task: Type[maze_task.MazeTask] = maze_task.SingleGoalSparseUMaze,
+        maze_task: Type[maze_task.MazeTask] = maze_task.MazeTask,
         n_bins: int = 0,
         sensor_range: float = 3.0,
         sensor_span: float = 2 * np.pi,
@@ -542,4 +542,5 @@ class MazeEnv(gym.Env):
         inner_reward = self._inner_reward_scaling * inner_reward
         outer_reward = self._task.reward(next_obs)
         done = self._task.termination(next_obs)
+        info["position"] = self.wrapped_env.get_xy()
         return next_obs, inner_reward + outer_reward, done, info

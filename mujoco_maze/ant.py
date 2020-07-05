@@ -45,14 +45,14 @@ class AntEnv(AgentModel):
     def __init__(
         self,
         file_path: Optional[str] = None,
-        ctrl_cost_weight: float = 0.5,
+        ctrl_cost_weight: float = 0.0001,
         forward_reward_fn: ForwardRewardFn = forward_reward_vnorm,
     ) -> None:
         self._ctrl_cost_weight = ctrl_cost_weight
         self._forward_reward_fn = forward_reward_fn
         super().__init__(file_path, 5)
 
-    def _forward_reward(self, xy_pos_before: np.ndarray) -> float:
+    def _forward_reward(self, xy_pos_before: np.ndarray) -> Tuple[float, np.ndarray]:
         xy_pos_after = self.sim.data.qpos[:2].copy()
         xy_velocity = (xy_pos_after - xy_pos_before) / self.dt
         return self._forward_reward_fn(xy_velocity)
