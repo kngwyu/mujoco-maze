@@ -20,7 +20,7 @@ class PointEnv(AgentModel):
     ORI_IND: int = 2
     MANUAL_COLLISION: bool = True
 
-    VELOCITY_LIMITS: float = 10.0
+    VELOCITY_LIMITS: float = 20.0
 
     def __init__(self, file_path: Optional[str] = None):
         super().__init__(file_path, 1)
