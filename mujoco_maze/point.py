@@ -20,18 +20,18 @@ class PointEnv(AgentModel):
     ORI_IND: int = 2
     MANUAL_COLLISION: bool = True
 
-    VELOCITY_LIMITS: float = 20.0
+    VELOCITY_LIMITS: float = 10.0
 
     def __init__(self, file_path: Optional[str] = None):
         super().__init__(file_path, 1)
         high = np.inf * np.ones(6, dtype=np.float32)
-        high[3:] = self.VELOCITY_LIMITS
+        high[3:] = self.VELOCITY_LIMITS * 1.2
         high[self.ORI_IND] = np.pi
         low = -high
         self.observation_space = gym.spaces.Box(low, high)
 
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, dict]:
-        qpos = np.copy(self.sim.data.qpos)
+        qpos = self.sim.data.qpos.copy()
         qpos[2] += action[1]
         # Clip orientation
         if qpos[2] < -np.pi:
@@ -70,14 +70,18 @@ class PointEnv(AgentModel):
         return self._get_obs()
 
     def get_xy(self):
-        return np.copy(self.sim.data.qpos[:2])
+        return self.sim.data.qpos[:2].copy()
 
-    def set_xy(self, xy):
-        qpos = np.copy(self.sim.data.qpos)
-        qpos[0] = xy[0]
-        qpos[1] = xy[1]
+    def set_xy(self, xy: np.ndarray) -> None:
+        qpos = self.sim.data.qpos.copy()
+        qpos[:2] = xy
+        self.set_state(qpos, self.sim.data.qvel)
 
-        qvel = self.sim.data.qvel
+    def set_collision(self, xy: np.ndarray, restitution_coef: float) -> None:
+        qpos = self.sim.data.qpos.copy()
+        qpos[:2] = xy
+        qvel = self.sim.data.qvel.copy()
+        qvel[:2] = -restitution_coef * qvel[:2]
         self.set_state(qpos, qvel)
 
     def get_ori(self):

@@ -9,9 +9,8 @@ A maze environment using mujoco that supports custom tasks and robots.
 import gym
 
 from mujoco_maze.ant import AntEnv
-from mujoco_maze.point import PointEnv
 from mujoco_maze.maze_task import TaskRegistry
-
+from mujoco_maze.point import PointEnv
 
 for maze_id in TaskRegistry.keys():
     for i, task_cls in enumerate(TaskRegistry.tasks(maze_id)):

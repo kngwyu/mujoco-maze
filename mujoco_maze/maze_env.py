@@ -10,7 +10,7 @@ import itertools as it
 import os
 import tempfile
 import xml.etree.ElementTree as ET
-from typing import Tuple, Type
+from typing import List, Tuple, Type
 
 import gym
 import numpy as np
@@ -27,13 +27,12 @@ class MazeEnv(gym.Env):
         self,
         model_cls: Type[AgentModel],
         maze_task: Type[maze_task.MazeTask] = maze_task.MazeTask,
-        n_bins: int = 0,
-        sensor_range: float = 3.0,
-        sensor_span: float = 2 * np.pi,
         top_down_view: float = False,
         maze_height: float = 0.5,
         maze_size_scaling: float = 4.0,
         inner_reward_scaling: float = 1.0,
+        restitution_coef: float = 0.6,
+        collision_penalty: float = 0.001,
         *args,
         **kwargs,
     ) -> None:
@@ -47,13 +46,11 @@ class MazeEnv(gym.Env):
         self._maze_size_scaling = size_scaling = maze_size_scaling
         self._inner_reward_scaling = inner_reward_scaling
         self.t = 0  # time steps
-        self._n_bins = n_bins
-        self._sensor_range = sensor_range * size_scaling
-        self._sensor_span = sensor_span
         self._observe_blocks = self._task.OBSERVE_BLOCKS
         self._put_spin_near_agent = self._task.PUT_SPIN_NEAR_AGENT
         self._top_down_view = top_down_view
-        self._collision_coef = 0.1
+        self._restitution_coef = restitution_coef
+        self._collision_penalty = collision_penalty
 
         self._maze_structure = structure = self._task.create_maze()
         # Elevate the maze to allow for falling.
@@ -282,7 +279,7 @@ class MazeEnv(gym.Env):
         ymin, ymax = (ymin - 0.5) * scaling - y0, (ymax + 0.5) * scaling - y0
         return xmin, xmax, ymin, ymax
 
-    def get_top_down_view(self):
+    def get_top_down_view(self) -> np.ndarray:
         self._view = np.zeros_like(self._view)
 
         def valid(row, col):
@@ -372,98 +369,7 @@ class MazeEnv(gym.Env):
 
         return self._view
 
-    def get_range_sensor_obs(self):
-        """Returns egocentric range sensor observations of maze."""
-        robot_x, robot_y, robot_z = self.wrapped_env.get_body_com("torso")[:3]
-        ori = self.get_ori()
-
-        structure = self._maze_structure
-        size_scaling = self._maze_size_scaling
-        height = self._maze_height
-
-        segments = []
-        # Get line segments (corresponding to outer boundary) of each immovable
-        # block or drop-off.
-        for i in range(len(structure)):
-            for j in range(len(structure[0])):
-                if structure[i][j].is_wall_or_chasm():  # There's a wall or drop-off.
-                    cx = j * size_scaling - self._init_torso_x
-                    cy = i * size_scaling - self._init_torso_y
-                    x1 = cx - 0.5 * size_scaling
-                    x2 = cx + 0.5 * size_scaling
-                    y1 = cy - 0.5 * size_scaling
-                    y2 = cy + 0.5 * size_scaling
-                    struct_segments = [
-                        ((x1, y1), (x2, y1)),
-                        ((x2, y1), (x2, y2)),
-                        ((x2, y2), (x1, y2)),
-                        ((x1, y2), (x1, y1)),
-                    ]
-                    for seg in struct_segments:
-                        segments.append(dict(segment=seg, type=structure[i][j],))
-        # Get line segments (corresponding to outer boundary) of each movable
-        # block within the agent's z-view.
-        for block_name, block_type in self.movable_blocks:
-            block_x, block_y, block_z = self.wrapped_env.get_body_com(block_name)[:3]
-            if (
-                block_z + height * size_scaling / 2 >= robot_z
-                and robot_z >= block_z - height * size_scaling / 2
-            ):  # Block in view.
-                x1 = block_x - 0.5 * size_scaling
-                x2 = block_x + 0.5 * size_scaling
-                y1 = block_y - 0.5 * size_scaling
-                y2 = block_y + 0.5 * size_scaling
-                struct_segments = [
-                    ((x1, y1), (x2, y1)),
-                    ((x2, y1), (x2, y2)),
-                    ((x2, y2), (x1, y2)),
-                    ((x1, y2), (x1, y1)),
-                ]
-                for seg in struct_segments:
-                    segments.append(dict(segment=seg, type=block_type))
-
-        sensor_readings = np.zeros((self._n_bins, 3))  # 3 for wall, drop-off, block
-        for ray_idx in range(self._n_bins):
-            ray_ori = (
-                ori
-                - self._sensor_span * 0.5
-                + (2 * ray_idx + 1.0) / (2 * self._n_bins) * self._sensor_span
-            )
-            ray_segments = []
-            # Get all segments that intersect with ray.
-            for seg in segments:
-                p = maze_env_utils.ray_segment_intersect(
-                    ray=((robot_x, robot_y), ray_ori), segment=seg["segment"]
-                )
-                if p is not None:
-                    ray_segments.append(
-                        dict(
-                            segment=seg["segment"],
-                            type=seg["type"],
-                            ray_ori=ray_ori,
-                            distance=maze_env_utils.point_distance(
-                                p, (robot_x, robot_y)
-                            ),
-                        )
-                    )
-            if len(ray_segments) > 0:
-                # Find out which segment is intersected first.
-                first_seg = sorted(ray_segments, key=lambda x: x["distance"])[0]
-                seg_type = first_seg["type"]
-                idx = None
-                if seg_type == 1:
-                    idx = 0  # Wall
-                elif seg_type == -1:
-                    idx = 1  # Drop-off
-                elif seg_type.can_move():
-                    idx == 2  # Block
-                sr = self._sensor_range
-                if first_seg["distance"] <= sr:
-                    sensor_readings[ray_idx][idx] = (sr - first_seg["distance"]) / sr
-
-        return sensor_readings
-
-    def _get_obs(self):
+    def _get_obs(self) -> np.ndarray:
         wrapped_obs = self.wrapped_env._get_obs()
         if self._top_down_view:
             view = [self.get_top_down_view().flat]
@@ -478,12 +384,9 @@ class MazeEnv(gym.Env):
                 [wrapped_obs[:3]] + additional_obs + [wrapped_obs[3:]]
             )
 
-        range_sensor_obs = self.get_range_sensor_obs()
-        return np.concatenate(
-            [wrapped_obs, range_sensor_obs.flat] + view + [[self.t * 0.001]]
-        )
+        return np.concatenate([wrapped_obs, *view, np.array([self.t * 0.001])])
 
-    def reset(self):
+    def reset(self) -> np.ndarray:
         self.t = 0
         self.wrapped_env.reset()
         # Samples a new goal
@@ -495,7 +398,7 @@ class MazeEnv(gym.Env):
             self.wrapped_env.set_xy(xy)
         return self._get_obs()
 
-    def set_marker(self):
+    def set_marker(self) -> None:
         for i, goal in enumerate(self._task.goals):
             idx = self.model.site_name2id(f"goal{i}")
             self.data.site_xpos[idx][: len(goal.pos)] = goal.pos
@@ -511,7 +414,7 @@ class MazeEnv(gym.Env):
     def action_space(self):
         return self.wrapped_env.action_space
 
-    def _find_robot(self):
+    def _find_robot(self) -> Tuple[float, float]:
         structure = self._maze_structure
         size_scaling = self._maze_size_scaling
         for i, j in it.product(range(len(structure)), range(len(structure[0]))):
@@ -519,7 +422,7 @@ class MazeEnv(gym.Env):
                 return j * size_scaling, i * size_scaling
         raise ValueError("No robot in maze specification.")
 
-    def _find_all_robots(self):
+    def _find_all_robots(self) -> List[Tuple[float, float]]:
         structure = self._maze_structure
         size_scaling = self._maze_size_scaling
         coords = []
@@ -528,14 +431,18 @@ class MazeEnv(gym.Env):
                 coords.append((j * size_scaling, i * size_scaling))
         return coords
 
-    def step(self, action):
+    def step(self, action) -> Tuple[np.ndarray, float, bool, dict]:
         self.t += 1
         if self.wrapped_env.MANUAL_COLLISION:
             old_pos = self.wrapped_env.get_xy()
             inner_next_obs, inner_reward, _, info = self.wrapped_env.step(action)
             new_pos = self.wrapped_env.get_xy()
-            if self._collision.is_in(old_pos, new_pos):
-                self.wrapped_env.set_xy(old_pos)
+            intersection = self._collision.detect_intersection(old_pos, new_pos)
+            if intersection is not None:
+                rest_vec = -self._restitution_coef * (new_pos - intersection)
+                pos = old_pos + rest_vec
+                self.wrapped_env.set_collision(pos, self._restitution_coef)
+                inner_reward -= self._collision_penalty
         else:
             inner_next_obs, inner_reward, _, info = self.wrapped_env.step(action)
         next_obs = self._get_obs()

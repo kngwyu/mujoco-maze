@@ -13,7 +13,6 @@ import numpy as np
 
 from mujoco_maze.agent_model import AgentModel
 
-
 ForwardRewardFn = Callable[[float, float], float]
 
 
@@ -103,11 +102,8 @@ class AntEnv(AgentModel):
 
     def set_xy(self, xy):
         qpos = self.sim.data.qpos.copy()
-        qpos[0] = xy[0]
-        qpos[1] = xy[1]
-
-        qvel = self.sim.data.qvel
-        self.set_state(qpos, qvel)
+        qpos[:2] = xy
+        self.set_state(qpos, self.sim.data.qvel)
 
     def get_xy(self):
         return np.copy(self.sim.data.qpos[:2])

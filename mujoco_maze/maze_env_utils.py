@@ -7,10 +7,13 @@ Based on `models`_ and `rllab`_.
 """
 
 import itertools as it
-import math
 from enum import Enum
+from typing import Any, List, Optional, Sequence, Tuple
 
 import numpy as np
+
+Self = Any
+Point = np.complex
 
 
 class MazeCell(Enum):
@@ -35,6 +38,9 @@ class MazeCell(Enum):
 
     def is_chasm(self) -> bool:
         return self == self.CHASM
+
+    def is_empty(self) -> bool:
+        return self == self.ROBOT or self == self.EMPTY
 
     def is_robot(self) -> bool:
         return self == self.ROBOT
@@ -70,107 +76,85 @@ class MazeCell(Enum):
         return self.can_move_x() or self.can_move_y() or self.can_move_z()
 
 
+class Line:
+    def __init__(self, p1: Sequence[float], p2: Sequence[float]) -> None:
+        self.p1 = np.complex(*p1)
+        self.p2 = np.complex(*p2)
+        self.conj_v1 = np.conjugate(self.p2 - self.p1)
+
+    def _intersect(self, other: Self) -> bool:
+        v2 = other.p1 - self.p1
+        v3 = other.p2 - self.p1
+        return (self.conj_v1 * v2).imag * (self.conj_v1 * v3).imag <= 0.0
+
+    def intersect(self, other: Self) -> Optional[np.ndarray]:
+        if self._intersect(other) and other._intersect(self):
+            cross = self._cross_point(other)
+            return np.array([cross.real, cross.imag])
+        else:
+            return None
+
+    def _cross_point(self, other: Self) -> Optional[Point]:
+        v2 = other.p2 - other.p1
+        v3 = self.p2 - other.p1
+        a, b = (self.conj_v1 * v2).imag, (self.conj_v1 * v3).imag
+        return other.p1 + b / a * v2
+
+    def __repr__(self) -> str:
+        x1, y1 = self.p1.real, self.p1.imag
+        x2, y2 = self.p2.real, self.p2.imag
+        return f"Line(({x1}, {y1}) -> ({x2}, {y2}))"
+
+
 class Collision:
     """For manual collision detection.
     """
 
-    ARROUND = np.array([[-1, 0], [1, 0], [0, -1], [0, 1]])
-    OFFSET = {False: 0.48, True: 0.51}
+    NEIGHBORS: List[Tuple[int, int]] = [[0, -1], [-1, 0], [0, 1], [1, 0]]
 
     def __init__(
         self, structure: list, size_scaling: float, torso_x: float, torso_y: float,
     ) -> None:
         h, w = len(structure), len(structure[0])
-        self.objects = []
+        self.lines = []
 
-        def is_block(pos) -> bool:
-            i, j = pos
+        def is_empty(i, j) -> bool:
             if 0 <= i < h and 0 <= j < w:
-                return structure[i][j].is_block()
+                return structure[i][j].is_empty()
             else:
                 return False
-
-        def offset(pos, index) -> float:
-            return self.OFFSET[is_block(pos + self.ARROUND[index])]
 
         for i, j in it.product(range(len(structure)), range(len(structure[0]))):
             if not structure[i][j].is_block():
                 continue
-            pos = np.array([i, j])
             y_base = i * size_scaling - torso_y
-            min_y = y_base - size_scaling * offset(pos, 0)
-            max_y = y_base + size_scaling * offset(pos, 1)
             x_base = j * size_scaling - torso_x
-            min_x = x_base - size_scaling * offset(pos, 2)
-            max_x = x_base + size_scaling * offset(pos, 3)
-            self.objects.append((min_y, max_y, min_x, max_x))
+            offset = size_scaling * 0.5
+            min_y, max_y = y_base - offset, y_base + offset
+            min_x, max_x = x_base - offset, x_base + offset
+            for dx, dy in self.NEIGHBORS:
+                if not is_empty(i + dy, j + dx):
+                    continue
+                self.lines.append(Line(
+                    (max_x if dx == 1 else min_x, max_y if dy == 1 else min_y),
+                    (min_x if dx == -1 else max_x, min_y if dy == -1 else max_y),
+                ))
 
-    def is_in(self, old_pos: np.ndarray, new_pos: np.ndarray) -> bool:
-        # Heuristics to prevent the agent from going through the wall
-        for x, y in ((old_pos + new_pos) / 2, new_pos):
-            for min_y, max_y, min_x, max_x in self.objects:
-                if min_x <= x <= max_x and min_y <= y <= max_y:
-                    return True
-        return False
-
-
-def line_intersect(pt1, pt2, ptA, ptB):
-    """
-    Taken from https://www.cs.hmc.edu/ACM/lectures/intersections.html
-    Returns the intersection of Line(pt1,pt2) and Line(ptA,ptB).
-    """
-
-    DET_TOLERANCE = 0.00000001
-
-    # the first line is pt1 + r*(pt2-pt1)
-    # in component form:
-    x1, y1 = pt1
-    x2, y2 = pt2
-    dx1 = x2 - x1
-    dy1 = y2 - y1
-
-    # the second line is ptA + s*(ptB-ptA)
-    x, y = ptA
-    xB, yB = ptB
-    dx = xB - x
-    dy = yB - y
-
-    DET = -dx1 * dy + dy1 * dx
-
-    if math.fabs(DET) < DET_TOLERANCE:
-        return (0, 0, 0, 0, 0)
-
-    # now, the determinant should be OK
-    DETinv = 1.0 / DET
-
-    # find the scalar amount along the "self" segment
-    r = DETinv * (-dy * (x - x1) + dx * (y - y1))
-
-    # find the scalar amount along the input line
-    s = DETinv * (-dy1 * (x - x1) + dx1 * (y - y1))
-
-    # return the average of the two descriptions
-    xi = (x1 + r * dx1 + x + s * dx) / 2.0
-    yi = (y1 + r * dy1 + y + s * dy) / 2.0
-    return (xi, yi, 1, r, s)
-
-
-def ray_segment_intersect(ray, segment):
-    """
-    Check if the ray originated from (x, y) with direction theta intersect the line
-    segment (x1, y1) -- (x2, y2), and return the intersection point if there is one.
-    """
-    (x, y), theta = ray
-    # (x1, y1), (x2, y2) = segment
-    pt1 = (x, y)
-    pt2 = (x + math.cos(theta), y + math.sin(theta))
-    xo, yo, valid, r, s = line_intersect(pt1, pt2, *segment)
-    if valid and r >= 0 and 0 <= s <= 1:
-        return (xo, yo)
-    return None
-
-
-def point_distance(p1, p2):
-    x1, y1 = p1
-    x2, y2 = p2
-    return ((x1 - x2) ** 2 + (y1 - y2) ** 2) ** 0.5
+    def detect_intersection(
+        self, old_pos: np.ndarray, new_pos: np.ndarray
+    ) -> Optional[np.ndarray]:
+        move = Line(old_pos, new_pos)
+        intersections = []
+        for line in self.lines:
+            intersection = line.intersect(move)
+            if intersection is not None:
+                intersections.append(intersection)
+        if len(intersections) == 0:
+            return None
+        pos = intersections[0]
+        dist = np.linalg.norm(pos - old_pos)
+        for new_pos in intersections[1:]:
+            new_dist = np.linalg.norm(new_pos - old_pos)
+            if new_dist < dist:
+                pos, dist = new_pos, new_dist
+        return pos
