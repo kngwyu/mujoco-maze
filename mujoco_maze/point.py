@@ -81,7 +81,7 @@ class PointEnv(AgentModel):
         qpos = self.sim.data.qpos.copy()
         qpos[:2] = xy
         qvel = self.sim.data.qvel.copy()
-        qvel[:2] = -restitution_coef * qvel[:2]
+        qvel[:2] *= -restitution_coef
         self.set_state(qpos, qvel)
 
     def get_ori(self):
