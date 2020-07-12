@@ -49,6 +49,7 @@ class AntEnv(AgentModel):
     ) -> None:
         self._ctrl_cost_weight = ctrl_cost_weight
         self._forward_reward_fn = forward_reward_fn
+        self.radius = 0.3
         super().__init__(file_path, 5)
 
     def _forward_reward(self, xy_pos_before: np.ndarray) -> Tuple[float, np.ndarray]:

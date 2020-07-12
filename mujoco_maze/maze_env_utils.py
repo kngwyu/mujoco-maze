@@ -8,7 +8,7 @@ Based on `models`_ and `rllab`_.
 
 import itertools as it
 from enum import Enum
-from typing import Any, List, Optional, Sequence, Tuple
+from typing import Any, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
@@ -77,10 +77,24 @@ class MazeCell(Enum):
 
 
 class Line:
-    def __init__(self, p1: Sequence[float], p2: Sequence[float]) -> None:
-        self.p1 = np.complex(*p1)
-        self.p2 = np.complex(*p2)
+    def __init__(
+        self, p1: Union[Point, Sequence[float]], p2: Union[Point, Sequence[float]]
+    ) -> None:
+        if isinstance(p1, Point):
+            self.p1 = p1
+        else:
+            self.p1 = np.complex(*p1)
+        if isinstance(p2, Point):
+            self.p2 = p2
+        else:
+            self.p2 = np.complex(*p2)
         self.conj_v1 = np.conjugate(self.p2 - self.p1)
+
+    def extend(self, dist: float) -> Tuple[Self, Point]:
+        v = self.p2 - self.p1
+        extended_v = v * dist / np.absolute(v)
+        p2 = self.p2 + extended_v
+        return Line(self.p1, p2), extended_v
 
     def _intersect(self, other: Self) -> bool:
         v2 = other.p1 - self.p1
@@ -135,15 +149,17 @@ class Collision:
             for dx, dy in self.NEIGHBORS:
                 if not is_empty(i + dy, j + dx):
                     continue
-                self.lines.append(Line(
-                    (max_x if dx == 1 else min_x, max_y if dy == 1 else min_y),
-                    (min_x if dx == -1 else max_x, min_y if dy == -1 else max_y),
-                ))
+                self.lines.append(
+                    Line(
+                        (max_x if dx == 1 else min_x, max_y if dy == 1 else min_y),
+                        (min_x if dx == -1 else max_x, min_y if dy == -1 else max_y),
+                    )
+                )
 
     def detect_intersection(
-        self, old_pos: np.ndarray, new_pos: np.ndarray
+        self, old_pos: np.ndarray, new_pos: np.ndarray, radius
     ) -> Optional[np.ndarray]:
-        move = Line(old_pos, new_pos)
+        move, extended = Line(old_pos, new_pos).extend(radius)
         intersections = []
         for line in self.lines:
             intersection = line.intersect(move)
@@ -157,4 +173,4 @@ class Collision:
             new_dist = np.linalg.norm(new_pos - old_pos)
             if new_dist < dist:
                 pos, dist = new_pos, new_dist
-        return pos
+        return pos - np.array([extended.real, extended.imag])

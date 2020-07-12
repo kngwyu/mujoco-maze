@@ -19,6 +19,7 @@ class PointEnv(AgentModel):
     FILE: str = "point.xml"
     ORI_IND: int = 2
     MANUAL_COLLISION: bool = True
+    radius: float = 0.5
 
     VELOCITY_LIMITS: float = 10.0
 
@@ -28,6 +29,7 @@ class PointEnv(AgentModel):
         high[3:] = self.VELOCITY_LIMITS * 1.2
         high[self.ORI_IND] = np.pi
         low = -high
+        self.radius = 0.5
         self.observation_space = gym.spaces.Box(low, high)
 
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, dict]:

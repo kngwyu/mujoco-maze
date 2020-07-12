@@ -31,7 +31,7 @@ class MazeEnv(gym.Env):
         maze_height: float = 0.5,
         maze_size_scaling: float = 4.0,
         inner_reward_scaling: float = 1.0,
-        restitution_coef: float = 0.9,
+        restitution_coef: float = 0.8,
         *args,
         **kwargs,
     ) -> None:
@@ -246,6 +246,7 @@ class MazeEnv(gym.Env):
         self.world_tree = tree
         self.wrapped_env = model_cls(*args, file_path=file_path, **kwargs)
         self.observation_space = self._get_obs_space()
+        self._debug = False
 
     def get_ori(self) -> float:
         return self.wrapped_env.get_ori()
@@ -435,16 +436,21 @@ class MazeEnv(gym.Env):
             old_pos = self.wrapped_env.get_xy()
             inner_next_obs, inner_reward, _, info = self.wrapped_env.step(action)
             new_pos = self.wrapped_env.get_xy()
-            # Checks that new_position is in the wall
-            intersection = self._collision.detect_intersection(old_pos, new_pos)
+            # Checks that the new_position is in the wall
+            intersection = self._collision.detect_intersection(
+                old_pos, new_pos, self.wrapped_env.radius,
+            )
             if intersection is not None:
                 pos = intersection + (intersection - new_pos) * self._restitution_coef
-                # Checks that pos is in the wall
-                intersection2 = self._collision.detect_intersection(old_pos, pos)
+                intersection2 = self._collision.detect_intersection(
+                    old_pos, pos, self.wrapped_env.radius,
+                )
+                # If pos is also not in the wall, we give up computing the position
                 if intersection2 is not None:
-                    # If pos is not in the wall, we give up computing the position
                     pos = old_pos
                 self.wrapped_env.set_collision(pos, self._restitution_coef)
+                if self._debug:
+                    print(f"new_pos: {new_pos}, pos: {pos}")
         else:
             inner_next_obs, inner_reward, _, info = self.wrapped_env.step(action)
         next_obs = self._get_obs()
