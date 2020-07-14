@@ -11,6 +11,7 @@ class AgentModel(ABC, MujocoEnv, EzPickle):
     FILE: str
     ORI_IND: int
     MANUAL_COLLISION: bool
+    RADIUS: float
 
     def __init__(self, file_path: str, frame_skip: int) -> None:
         MujocoEnv.__init__(self, file_path, frame_skip)
@@ -37,8 +38,3 @@ class AgentModel(ABC, MujocoEnv, EzPickle):
     @abstractmethod
     def get_ori(self) -> float:
         pass
-
-    def set_collision(self, xy: np.ndarray, restitution_coef: float) -> None:
-        """Set the coordinate of the agent and set v' = -kv.
-        """
-        raise NotImplementedError(f"{type(self)} does not support manual collision")

@@ -63,8 +63,8 @@ class MazeEnv(gym.Env):
             (x - torso_x, y - torso_y) for x, y in self._find_all_robots()
         ]
 
-        self._collision = maze_env_utils.Collision(
-            structure, size_scaling, torso_x, torso_y,
+        self._collision = maze_env_utils.CollisionDetector(
+            structure, size_scaling, torso_x, torso_y, model_cls.RADIUS,
         )
 
         self._xy_to_rowcol = lambda x, y: (
@@ -437,20 +437,14 @@ class MazeEnv(gym.Env):
             inner_next_obs, inner_reward, _, info = self.wrapped_env.step(action)
             new_pos = self.wrapped_env.get_xy()
             # Checks that the new_position is in the wall
-            intersection = self._collision.detect_intersection(
-                old_pos, new_pos, self.wrapped_env.radius,
-            )
-            if intersection is not None:
-                pos = intersection + (intersection - new_pos) * self._restitution_coef
-                intersection2 = self._collision.detect_intersection(
-                    old_pos, pos, self.wrapped_env.radius,
-                )
-                # If pos is also not in the wall, we give up computing the position
-                if intersection2 is not None:
-                    pos = old_pos
-                self.wrapped_env.set_collision(pos, self._restitution_coef)
-                if self._debug:
-                    print(f"new_pos: {new_pos}, pos: {pos}")
+            collision = self._collision.detect(old_pos, new_pos)
+            if collision is not None:
+                pos = collision.point + self._restitution_coef * collision.rest()
+                if self._collision.detect(old_pos, pos) is not None:
+                    # If pos is also not in the wall, we give up computing the position
+                    self.wrapped_env.set_xy(old_pos)
+                else:
+                    self.wrapped_env.set_xy(pos)
         else:
             inner_next_obs, inner_reward, _, info = self.wrapped_env.step(action)
         next_obs = self._get_obs()

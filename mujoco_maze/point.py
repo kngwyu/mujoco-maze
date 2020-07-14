@@ -19,7 +19,7 @@ class PointEnv(AgentModel):
     FILE: str = "point.xml"
     ORI_IND: int = 2
     MANUAL_COLLISION: bool = True
-    radius: float = 0.5
+    RADIUS: float = 0.4
 
     VELOCITY_LIMITS: float = 10.0
 
@@ -29,7 +29,6 @@ class PointEnv(AgentModel):
         high[3:] = self.VELOCITY_LIMITS * 1.2
         high[self.ORI_IND] = np.pi
         low = -high
-        self.radius = 0.5
         self.observation_space = gym.spaces.Box(low, high)
 
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, dict]:
@@ -78,13 +77,6 @@ class PointEnv(AgentModel):
         qpos = self.sim.data.qpos.copy()
         qpos[:2] = xy
         self.set_state(qpos, self.sim.data.qvel)
-
-    def set_collision(self, xy: np.ndarray, restitution_coef: float) -> None:
-        qpos = self.sim.data.qpos.copy()
-        qpos[:2] = xy
-        qvel = self.sim.data.qvel.copy()
-        qvel[:2] *= -restitution_coef
-        self.set_state(qpos, qvel)
 
     def get_ori(self):
         return self.sim.data.qpos[self.ORI_IND]

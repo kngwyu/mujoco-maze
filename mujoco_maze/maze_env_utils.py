@@ -8,7 +8,7 @@ Based on `models`_ and `rllab`_.
 
 import itertools as it
 from enum import Enum
-from typing import Any, List, Optional, Sequence, Tuple, Union
+from typing import Any, List, NamedTuple, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
@@ -78,33 +78,36 @@ class MazeCell(Enum):
 
 class Line:
     def __init__(
-        self, p1: Union[Point, Sequence[float]], p2: Union[Point, Sequence[float]]
+        self, p1: Union[Sequence[float], Point], p2: Union[Sequence[float], Point],
     ) -> None:
-        if isinstance(p1, Point):
-            self.p1 = p1
-        else:
-            self.p1 = np.complex(*p1)
-        if isinstance(p2, Point):
-            self.p2 = p2
-        else:
-            self.p2 = np.complex(*p2)
-        self.conj_v1 = np.conjugate(self.p2 - self.p1)
+        self.p1 = p1 if isinstance(p1, Point) else np.complex(*p1)
+        self.p2 = p2 if isinstance(p2, Point) else np.complex(*p2)
+        self.v1 = self.p2 - self.p1
+        self.conj_v1 = np.conjugate(self.v1)
 
-    def extend(self, dist: float) -> Tuple[Self, Point]:
-        v = self.p2 - self.p1
-        extended_v = v * dist / np.absolute(v)
-        p2 = self.p2 + extended_v
-        return Line(self.p1, p2), extended_v
+        if np.absolute(self.v1) <= 1e-8:
+            raise ValueError(f"p1({p1}) and p2({p2}) are too close")
 
     def _intersect(self, other: Self) -> bool:
         v2 = other.p1 - self.p1
         v3 = other.p2 - self.p1
         return (self.conj_v1 * v2).imag * (self.conj_v1 * v3).imag <= 0.0
 
-    def intersect(self, other: Self) -> Optional[np.ndarray]:
+    def _projection(self, p: Point) -> Point:
+        nv1 = -self.v1
+        nv1_norm = np.absolute(nv1) ** 2
+        scale = np.real(np.conjugate(p - self.p1) * nv1) / nv1_norm
+        return self.p1 + nv1 * scale
+
+    def reflection(self, p: Point) -> Point:
+        return p + 2.0 * (self._projection(p) - p)
+
+    def distance(self, p: Point) -> float:
+        return np.absolute(p - self._projection(p))
+
+    def intersect(self, other: Self) -> Point:
         if self._intersect(other) and other._intersect(self):
-            cross = self._cross_point(other)
-            return np.array([cross.real, cross.imag])
+            return self._cross_point(other)
         else:
             return None
 
@@ -121,13 +124,32 @@ class Line:
 
 
 class Collision:
+    def __init__(self, point: Point, reflection: Point) -> None:
+        self._point = point
+        self._reflection = reflection
+
+    @property
+    def point(self) -> np.ndarray:
+        return np.array([self._point.real, self._point.imag])
+
+    def rest(self) -> np.ndarray:
+        p = self._reflection - self._point
+        return np.array([p.real, p.imag])
+
+
+class CollisionDetector:
     """For manual collision detection.
     """
-
+    EPS: float = 0.05
     NEIGHBORS: List[Tuple[int, int]] = [[0, -1], [-1, 0], [0, 1], [1, 0]]
 
     def __init__(
-        self, structure: list, size_scaling: float, torso_x: float, torso_y: float,
+        self,
+        structure: list,
+        size_scaling: float,
+        torso_x: float,
+        torso_y: float,
+        radius: float,
     ) -> None:
         h, w = len(structure), len(structure[0])
         self.lines = []
@@ -143,7 +165,7 @@ class Collision:
                 continue
             y_base = i * size_scaling - torso_y
             x_base = j * size_scaling - torso_x
-            offset = size_scaling * 0.5
+            offset = size_scaling * 0.5 + radius
             min_y, max_y = y_base - offset, y_base + offset
             min_x, max_x = x_base - offset, x_base + offset
             for dx, dy in self.NEIGHBORS:
@@ -156,21 +178,21 @@ class Collision:
                     )
                 )
 
-    def detect_intersection(
-        self, old_pos: np.ndarray, new_pos: np.ndarray, radius
-    ) -> Optional[np.ndarray]:
-        move, extended = Line(old_pos, new_pos).extend(radius)
-        intersections = []
+    def detect(self, old_pos: np.ndarray, new_pos: np.ndarray) -> Optional[Collision]:
+        move = Line(old_pos, new_pos)
+        # Next, checks that the trajectory cross the wall or not
+        collisions = []
         for line in self.lines:
             intersection = line.intersect(move)
             if intersection is not None:
-                intersections.append(intersection)
-        if len(intersections) == 0:
+                reflection = line.reflection(move.p2)
+                collisions.append(Collision(intersection, reflection))
+        if len(collisions) == 0:
             return None
-        pos = intersections[0]
-        dist = np.linalg.norm(pos - old_pos)
-        for new_pos in intersections[1:]:
-            new_dist = np.linalg.norm(new_pos - old_pos)
+        col = collisions[0]
+        dist = np.absolute(col._point - move.p1)
+        for collision in collisions[1:]:
+            new_dist = np.absolute(collision._point - move.p1)
             if new_dist < dist:
-                pos, dist = new_pos, new_dist
-        return pos - np.array([extended.real, extended.imag])
+                col, dist = collision, new_dist
+        return col

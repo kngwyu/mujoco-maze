@@ -5,6 +5,19 @@ from mujoco_maze.maze_env_utils import Line
 
 
 @pytest.mark.parametrize(
+    "l1, l2, p, ans",
+    [
+        ((0.0, 0.0), (4.0, 4.0), (1.0, 3.0), 2.0 ** 0.5),
+        ((-3.0, -3.0), (0.0, 1.0), (-3.0, 1.0), 2.4),
+    ],
+)
+def test_distance(l1, l2, p, ans):
+    line = Line(l1, l2)
+    point = np.complex(*p)
+    assert abs(line.distance(point) - ans) <= 1e-8
+
+
+@pytest.mark.parametrize(
     "l1p1, l1p2, l2p1, l2p2, none",
     [
         ((0.0, 0.0), (1.0, 0.0), (0.0, -1.0), (1.0, 1.0), False),
@@ -22,6 +35,7 @@ def test_intersect(l1p1, l1p2, l2p1, l2p2, none):
         assert i1 is None and i2 is None
     else:
         assert i1 is not None
+        i1 = np.array([i1.real, i1.imag])
         np.testing.assert_array_almost_equal(i1, np.array(i2))
 
 
