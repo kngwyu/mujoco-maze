@@ -1,69 +1,62 @@
-# Copyright 2018 The TensorFlow Authors All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
+"""
+A ball-like robot as an explorer in the maze.
+Based on `models`_ and `rllab`_.
 
-"""Wrapper for creating the ant environment in gym_mujoco."""
+.. _models: https://github.com/tensorflow/models/tree/master/research/efficient-hrl
+.. _rllab: https://github.com/rll/rllab
+"""
 
 import math
+from typing import Optional, Tuple
+
+import gym
 import numpy as np
 
 from mujoco_maze.agent_model import AgentModel
 
 
 class PointEnv(AgentModel):
-    FILE = "point.xml"
-    ORI_IND = 2
+    FILE: str = "point.xml"
+    ORI_IND: int = 2
+    MANUAL_COLLISION: bool = True
+    RADIUS: float = 0.4
 
-    def __init__(self, file_path=None, expose_all_qpos=True):
-        self._expose_all_qpos = expose_all_qpos
+    VELOCITY_LIMITS: float = 10.0
+
+    def __init__(self, file_path: Optional[str] = None):
         super().__init__(file_path, 1)
+        high = np.inf * np.ones(6, dtype=np.float32)
+        high[3:] = self.VELOCITY_LIMITS * 1.2
+        high[self.ORI_IND] = np.pi
+        low = -high
+        self.observation_space = gym.spaces.Box(low, high)
 
-    def _step(self, a):
-        return self.step(a)
-
-    def step(self, action):
-        qpos = np.copy(self.sim.data.qpos)
+    def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, dict]:
+        qpos = self.sim.data.qpos.copy()
         qpos[2] += action[1]
+        # Clip orientation
+        if qpos[2] < -np.pi:
+            qpos[2] += np.pi * 2
+        elif np.pi < qpos[2]:
+            qpos[2] -= np.pi * 2
         ori = qpos[2]
-        # compute increment in each direction
-        dx = math.cos(ori) * action[0]
-        dy = math.sin(ori) * action[0]
-        # ensure that the robot is within reasonable range
-        qpos[0] = np.clip(qpos[0] + dx, -100, 100)
-        qpos[1] = np.clip(qpos[1] + dy, -100, 100)
-        qvel = self.sim.data.qvel
+        # Compute increment in each direction
+        qpos[0] += math.cos(ori) * action[0]
+        qpos[1] += math.sin(ori) * action[0]
+        qvel = np.clip(self.sim.data.qvel, -self.VELOCITY_LIMITS, self.VELOCITY_LIMITS)
         self.set_state(qpos, qvel)
         for _ in range(0, self.frame_skip):
             self.sim.step()
         next_obs = self._get_obs()
-        reward = 0
-        done = False
-        info = {}
-        return next_obs, reward, done, info
+        return next_obs, 0.0, False, {}
 
     def _get_obs(self):
-        if self._expose_all_qpos:
-            return np.concatenate(
-                [
-                    self.sim.data.qpos.flat[:3],  # Only point-relevant coords.
-                    self.sim.data.qvel.flat[:3],
-                ]
-            )
-        else:
-            return np.concatenate(
-                [self.sim.data.qpos.flat[2:3], self.sim.data.qvel.flat[:3]]
-            )
+        return np.concatenate(
+            [
+                self.sim.data.qpos.flat[:3],  # Only point-relevant coords.
+                self.sim.data.qvel.flat[:3],
+            ]
+        )
 
     def reset_model(self):
         qpos = self.init_qpos + self.np_random.uniform(
@@ -78,15 +71,12 @@ class PointEnv(AgentModel):
         return self._get_obs()
 
     def get_xy(self):
-        return np.copy(self.sim.data.qpos[:2])
+        return self.sim.data.qpos[:2].copy()
 
-    def set_xy(self, xy):
-        qpos = np.copy(self.sim.data.qpos)
-        qpos[0] = xy[0]
-        qpos[1] = xy[1]
-
-        qvel = self.sim.data.qvel
-        self.set_state_without_forward(qpos, qvel)
+    def set_xy(self, xy: np.ndarray) -> None:
+        qpos = self.sim.data.qpos.copy()
+        qpos[:2] = xy
+        self.set_state(qpos, self.sim.data.qvel)
 
     def get_ori(self):
         return self.sim.data.qpos[self.ORI_IND]

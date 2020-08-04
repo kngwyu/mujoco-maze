@@ -1,24 +1,27 @@
-# Copyright 2018 The TensorFlow Authors All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
+"""
+A four-legged robot as an explorer in the maze.
+Based on `models`_ and `gym`_ (both ant and ant-v3).
 
-"""Wrapper for creating the ant environment in gym_mujoco."""
+.. _models: https://github.com/tensorflow/models/tree/master/research/efficient-hrl
+.. _gym: https://github.com/openai/gym
+"""
 
 import math
+from typing import Callable, Optional, Tuple
+
 import numpy as np
 
 from mujoco_maze.agent_model import AgentModel
+
+ForwardRewardFn = Callable[[float, float], float]
+
+
+def forward_reward_vabs(xy_velocity: float) -> float:
+    return np.sum(np.abs(xy_velocity))
+
+
+def forward_reward_vnorm(xy_velocity: float) -> float:
+    return np.linalg.norm(xy_velocity)
 
 
 def q_inv(a):
@@ -34,79 +37,49 @@ def q_mult(a, b):  # multiply two quaternion
 
 
 class AntEnv(AgentModel):
-    FILE = "ant.xml"
-    ORI_IND = 3
+    FILE: str = "ant.xml"
+    ORI_IND: int = 3
+    MANUAL_COLLISION: bool = False
+    RADIUS: float = 0.2
 
     def __init__(
         self,
-        file_path=None,
-        expose_all_qpos=True,
-        expose_body_coms=None,
-        expose_body_comvels=None,
-    ):
-        self._expose_all_qpos = expose_all_qpos
-        self._expose_body_coms = expose_body_coms
-        self._expose_body_comvels = expose_body_comvels
-        self._body_com_indices = {}
-        self._body_comvel_indices = {}
-
+        file_path: Optional[str] = None,
+        ctrl_cost_weight: float = 0.0001,
+        forward_reward_fn: ForwardRewardFn = forward_reward_vnorm,
+    ) -> None:
+        self._ctrl_cost_weight = ctrl_cost_weight
+        self._forward_reward_fn = forward_reward_fn
         super().__init__(file_path, 5)
 
-    def _step(self, a):
-        return self.step(a)
+    def _forward_reward(self, xy_pos_before: np.ndarray) -> Tuple[float, np.ndarray]:
+        xy_pos_after = self.sim.data.qpos[:2].copy()
+        xy_velocity = (xy_pos_after - xy_pos_before) / self.dt
+        return self._forward_reward_fn(xy_velocity)
 
-    def step(self, a):
-        xposbefore = self.get_body_com("torso")[0]
-        self.do_simulation(a, self.frame_skip)
-        xposafter = self.get_body_com("torso")[0]
-        forward_reward = (xposafter - xposbefore) / self.dt
-        ctrl_cost = 0.5 * np.square(a).sum()
-        survive_reward = 1.0
-        reward = forward_reward - ctrl_cost + survive_reward
-        _ = self.state_vector()
-        done = False
+    def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, dict]:
+        xy_pos_before = self.sim.data.qpos[:2].copy()
+        self.do_simulation(action, self.frame_skip)
+
+        forward_reward = self._forward_reward(xy_pos_before)
+        ctrl_cost = self._ctrl_cost_weight * np.square(action).sum()
+
         ob = self._get_obs()
         return (
             ob,
-            reward,
-            done,
-            dict(
-                reward_forward=forward_reward,
-                reward_ctrl=-ctrl_cost,
-                reward_survive=survive_reward,
-            ),
+            forward_reward - ctrl_cost,
+            False,
+            dict(reward_forward=forward_reward, reward_ctrl=-ctrl_cost,),
         )
 
     def _get_obs(self):
         # No cfrc observation
-        if self._expose_all_qpos:
-            obs = np.concatenate(
-                [
-                    self.sim.data.qpos.flat[:15],  # Ensures only ant obs.
-                    self.sim.data.qvel.flat[:14],
-                ]
-            )
-        else:
-            obs = np.concatenate(
-                [self.sim.data.qpos.flat[2:15], self.sim.data.qvel.flat[:14],]
-            )
-
-        if self._expose_body_coms is not None:
-            for name in self._expose_body_coms:
-                com = self.get_body_com(name)
-                if name not in self._body_com_indices:
-                    indices = range(len(obs), len(obs) + len(com))
-                    self._body_com_indices[name] = indices
-                obs = np.concatenate([obs, com])
-
-        if self._expose_body_comvels is not None:
-            for name in self._expose_body_comvels:
-                comvel = self.get_body_comvel(name)
-                if name not in self._body_comvel_indices:
-                    indices = range(len(obs), len(obs) + len(comvel))
-                    self._body_comvel_indices[name] = indices
-                obs = np.concatenate([obs, comvel])
-        return obs
+        return np.concatenate(
+            [
+                self.sim.data.qpos.flat[:15],  # Ensures only ant obs.
+                self.sim.data.qvel.flat[:14],
+            ]
+        )
 
     def reset_model(self):
         qpos = self.init_qpos + self.np_random.uniform(
@@ -120,9 +93,6 @@ class AntEnv(AgentModel):
         self.set_state(qpos, qvel)
         return self._get_obs()
 
-    def viewer_setup(self):
-        self.viewer.cam.distance = self.model.stat.extent * 0.5
-
     def get_ori(self):
         ori = [0, 1, 0, 0]
         ori_ind = self.ORI_IND
@@ -132,12 +102,9 @@ class AntEnv(AgentModel):
         return ori
 
     def set_xy(self, xy):
-        qpos = np.copy(self.sim.data.qpos)
-        qpos[0] = xy[0]
-        qpos[1] = xy[1]
-
-        qvel = self.sim.data.qvel
-        self.set_state_without_forwarding(qpos, qvel)
+        qpos = self.sim.data.qpos.copy()
+        qpos[:2] = xy
+        self.set_state(qpos, self.sim.data.qvel)
 
     def get_xy(self):
         return np.copy(self.sim.data.qpos[:2])

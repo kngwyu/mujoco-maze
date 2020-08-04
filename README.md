@@ -5,23 +5,32 @@ Some maze environments for reinforcement learning(RL) using [mujoco-py] and
 
 Thankfully, this project is based on the code from  [rllab] and [tensorflow/models][models].
 
-## Implemeted Environments
+## Environments
 
-- Distance based rewards
-  - AntMaze-v0
-  - AntPush-v0
-  - AntFall-v0
-  - PointMaze-v0
-  - PointPush-v0
-  - PointFall-v0
+- PointUMaze/AntUmaze
 
-- Goal rewards + step penalty
-  - AntMaze-v1
-  - AntPush-v1
-  - AntFall-v1
-  - PointMaze-v1
-  - PointPush-v1
-  - PointFall-v1
+  ![PointUMaze](./screenshots/PointUMaze.png)
+  - PointUMaze-v0/AntUMaze-v0 (Distance-based Reward)
+  - PointUmaze-v1/AntUMaze-v1 (Goal-based Reward i.e., 1.0 or -ε)
+
+- Point4Rooms/Ant4Rooms
+
+  ![Point4Rooms](./screenshots/Point4Rooms.png)
+  - Point4Rooms-v0/Ant4Rooms-v0 (Distance-based Reward)
+  - Point4Rooms-v1/Ant4Rooms-v1 (Goal-based Reward)
+  - Point4Rooms-v2/Ant4Rooms-v2 (Multiple Goals (0.5 pt or 1.0 pt))
+
+- PointPush/AntPush
+
+  ![PointPush](./screenshots/PointPush.png)
+  - PointPush-v0/AntPush-v0 (Distance-based Reward)
+  - PointPush-v1/AntPush-v1 (Goal-based Reward)
+
+- PointFall/AntFall
+
+  ![PointFall](./screenshots/PointFall.png)
+  - PointFall-v0/AntFall-v0 (Distance-based Reward)
+  - PointFall-v1/AntFall-v1 (Goal-based Reward)
 
 ## License
 This project is licensed under Apache License, Version 2.0

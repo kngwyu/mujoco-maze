@@ -1,47 +1,46 @@
+"""
+Mujoco Maze
+----------
+
+A maze environment using mujoco that supports custom tasks and robots.
+"""
+
+
 import gym
 
-MAZE_IDS = ["Maze", "Push", "Fall"]  # TODO: Block, BlockMaze
+from mujoco_maze.ant import AntEnv
+from mujoco_maze.maze_task import TaskRegistry
+from mujoco_maze.point import PointEnv
 
+for maze_id in TaskRegistry.keys():
+    for i, task_cls in enumerate(TaskRegistry.tasks(maze_id)):
+        gym.envs.register(
+            id=f"Ant{maze_id}-v{i}",
+            entry_point="mujoco_maze.maze_env:MazeEnv",
+            kwargs=dict(
+                model_cls=AntEnv,
+                maze_task=task_cls,
+                maze_size_scaling=task_cls.MAZE_SIZE_SCALING.ant,
+                inner_reward_scaling=task_cls.INNER_REWARD_SCALING,
+            ),
+            max_episode_steps=1000,
+            reward_threshold=task_cls.REWARD_THRESHOLD,
+        )
 
-def _get_kwargs(maze_id: str) -> tuple:
-    return {
-        "maze_id": maze_id,
-        "observe_blocks": maze_id in ["Block", "BlockMaze"],
-        "put_spin_near_agent": maze_id in ["Block", "BlockMaze"],
-    }
-
-
-for maze_id in MAZE_IDS:
-    gym.envs.register(
-        id="Ant{}-v0".format(maze_id),
-        entry_point="mujoco_maze.ant_maze_env:AntMazeEnv",
-        kwargs=dict(maze_size_scaling=8.0, **_get_kwargs(maze_id)),
-        max_episode_steps=1000,
-        reward_threshold=-1000,
-    )
-    gym.envs.register(
-        id="Ant{}-v1".format(maze_id),
-        entry_point="mujoco_maze.ant_maze_env:AntMazeEnv",
-        kwargs=dict(maze_size_scaling=8.0, **_get_kwargs(maze_id)),
-        max_episode_steps=1000,
-        reward_threshold=0.9,
-    )
-
-for maze_id in MAZE_IDS:
-    gym.envs.register(
-        id="Point{}-v0".format(maze_id),
-        entry_point="mujoco_maze.point_maze_env:PointMazeEnv",
-        kwargs=_get_kwargs(maze_id),
-        max_episode_steps=1000,
-        reward_threshold=-1000,
-    )
-    gym.envs.register(
-        id="Point{}-v1".format(maze_id),
-        entry_point="mujoco_maze.point_maze_env:PointMazeEnv",
-        kwargs=dict(**_get_kwargs(maze_id), dense_reward=False),
-        max_episode_steps=1000,
-        reward_threshold=0.9,
-    )
+for maze_id in TaskRegistry.keys():
+    for i, task_cls in enumerate(TaskRegistry.tasks(maze_id)):
+        gym.envs.register(
+            id=f"Point{maze_id}-v{i}",
+            entry_point="mujoco_maze.maze_env:MazeEnv",
+            kwargs=dict(
+                model_cls=PointEnv,
+                maze_task=task_cls,
+                maze_size_scaling=task_cls.MAZE_SIZE_SCALING.point,
+                inner_reward_scaling=task_cls.INNER_REWARD_SCALING,
+            ),
+            max_episode_steps=1000,
+            reward_threshold=task_cls.REWARD_THRESHOLD,
+        )
 
 
 __version__ = "0.1.0"
