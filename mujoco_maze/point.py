@@ -6,7 +6,6 @@ Based on `models`_ and `rllab`_.
 .. _rllab: https://github.com/rll/rllab
 """
 
-import math
 from typing import Optional, Tuple
 
 import gym
@@ -41,8 +40,8 @@ class PointEnv(AgentModel):
             qpos[2] -= np.pi * 2
         ori = qpos[2]
         # Compute increment in each direction
-        qpos[0] += math.cos(ori) * action[0]
-        qpos[1] += math.sin(ori) * action[0]
+        qpos[0] += np.cos(ori) * action[0]
+        qpos[1] += np.sin(ori) * action[0]
         qvel = np.clip(self.sim.data.qvel, -self.VELOCITY_LIMITS, self.VELOCITY_LIMITS)
         self.set_state(qpos, qvel)
         for _ in range(0, self.frame_skip):
