@@ -200,7 +200,7 @@ class GoalReward4Rooms(MazeTask):
 
     def __init__(self, scale: float) -> None:
         super().__init__(scale)
-        self.goals = [MazeGoal(np.array([6.0 * scale, 6.0 * scale]))]
+        self.goals = [MazeGoal(np.array([6.0 * scale, -6.0 * scale]))]
 
     def reward(self, obs: np.ndarray) -> float:
         for goal in self.goals:
@@ -213,13 +213,13 @@ class GoalReward4Rooms(MazeTask):
         E, B, R = MazeCell.EMPTY, MazeCell.BLOCK, MazeCell.ROBOT
         return [
             [B, B, B, B, B, B, B, B, B],
-            [B, R, E, E, B, E, E, E, B],
+            [B, E, E, E, B, E, E, E, B],
             [B, E, E, E, E, E, E, E, B],
             [B, E, E, E, B, E, E, E, B],
             [B, B, E, B, B, B, E, B, B],
             [B, E, E, E, B, E, E, E, B],
             [B, E, E, E, E, E, E, E, B],
-            [B, E, E, E, B, E, E, E, B],
+            [B, R, E, E, B, E, E, E, B],
             [B, B, B, B, B, B, B, B, B],
         ]
 
@@ -232,7 +232,7 @@ class SubGoal4Rooms(GoalReward4Rooms):
     def __init__(self, scale: float) -> None:
         super().__init__(scale)
         self.goals += [
-            MazeGoal(np.array([0.0 * scale, 6.0 * scale]), 0.5, GREEN),
+            MazeGoal(np.array([0.0 * scale, -6.0 * scale]), 0.5, GREEN),
             MazeGoal(np.array([6.0 * scale, 0.0 * scale]), 0.5, GREEN),
         ]
 
