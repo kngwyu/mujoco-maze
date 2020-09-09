@@ -246,7 +246,6 @@ class MazeEnv(gym.Env):
         self.world_tree = tree
         self.wrapped_env = model_cls(*args, file_path=file_path, **kwargs)
         self.observation_space = self._get_obs_space()
-        self._debug = False
 
     def get_ori(self) -> float:
         return self.wrapped_env.get_ori()
