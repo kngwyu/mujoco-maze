@@ -8,7 +8,7 @@ Based on `models`_ and `rllab`_.
 
 import itertools as it
 from enum import Enum
-from typing import Any, List, NamedTuple, Optional, Sequence, Tuple, Union
+from typing import Any, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
