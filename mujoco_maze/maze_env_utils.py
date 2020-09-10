@@ -84,9 +84,7 @@ class Line:
         self.p2 = p2 if isinstance(p2, Point) else np.complex(*p2)
         self.v1 = self.p2 - self.p1
         self.conj_v1 = np.conjugate(self.v1)
-
-        if np.absolute(self.v1) <= 1e-8:
-            raise ValueError(f"p1({p1}) and p2({p2}) are too close")
+        self.norm = np.absolute(self.v1)
 
     def _intersect(self, other: Self) -> bool:
         v2 = other.p1 - self.p1
@@ -180,6 +178,9 @@ class CollisionDetector:
 
     def detect(self, old_pos: np.ndarray, new_pos: np.ndarray) -> Optional[Collision]:
         move = Line(old_pos, new_pos)
+        # First, checks that it actually moved
+        if move.norm <= 1e-8:
+            return None
         # Next, checks that the trajectory cross the wall or not
         collisions = []
         for line in self.lines:
