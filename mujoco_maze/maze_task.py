@@ -2,7 +2,7 @@
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, List, NamedTuple, Type
+from typing import Dict, List, NamedTuple, Tuple, Type
 
 import numpy as np
 
@@ -237,6 +237,44 @@ class SubGoal4Rooms(GoalReward4Rooms):
         ]
 
 
+class GoalRewardTRoom(MazeTask):
+    REWARD_THRESHOLD: float = 0.9
+    MAZE_SIZE_SCALING: Scaling = Scaling(4.0, 4.0)
+
+    def __init__(
+        self,
+        scale: float,
+        goals: List[Tuple[float, float]] = [(2.0, -4.0)],
+    ) -> None:
+        super().__init__(scale)
+        self.goals = []
+        for x, y in goals:
+            self.goals.append(MazeGoal(np.array([x * scale, y * scale])))
+
+    def reward(self, obs: np.ndarray) -> float:
+        for goal in self.goals:
+            if goal.neighbor(obs):
+                return goal.reward_scale
+        return -0.0001
+
+    @staticmethod
+    def create_maze() -> List[List[MazeCell]]:
+        E, B, R = MazeCell.EMPTY, MazeCell.BLOCK, MazeCell.ROBOT
+        return [
+            [B, B, B, B, B, B, B],
+            [B, E, E, E, E, E, B],
+            [B, E, E, B, E, E, B],
+            [B, E, E, B, E, E, B],
+            [B, E, B, B, B, E, B],
+            [B, E, E, R, E, E, B],
+            [B, B, B, B, B, B, B],
+        ]
+
+
+class DistRewardTRoom(GoalRewardTRoom, DistRewardMixIn):
+    pass
+
+
 class TaskRegistry:
     REGISTRY: Dict[str, List[Type[MazeTask]]] = {
         "UMaze": [DistRewardUMaze, GoalRewardUMaze],
@@ -244,6 +282,7 @@ class TaskRegistry:
         "Fall": [DistRewardFall, GoalRewardFall],
         "2Rooms": [DistReward2Rooms, GoalReward2Rooms, SubGoal2Rooms],
         "4Rooms": [DistReward4Rooms, GoalReward4Rooms, SubGoal4Rooms],
+        "TRoom": [DistRewardTRoom, GoalRewardTRoom],
     }
 
     @staticmethod

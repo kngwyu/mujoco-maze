@@ -32,10 +32,11 @@ class MazeEnv(gym.Env):
         maze_size_scaling: float = 4.0,
         inner_reward_scaling: float = 1.0,
         restitution_coef: float = 0.8,
+        task_kwargs: dict = {},
         *args,
         **kwargs,
     ) -> None:
-        self._task = maze_task(maze_size_scaling)
+        self._task = maze_task(maze_size_scaling, **task_kwargs)
 
         xml_path = os.path.join(MODEL_DIR, model_cls.FILE)
         tree = ET.parse(xml_path)
