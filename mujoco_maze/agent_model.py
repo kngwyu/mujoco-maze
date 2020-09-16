@@ -17,6 +17,13 @@ class AgentModel(ABC, MujocoEnv, EzPickle):
         MujocoEnv.__init__(self, file_path, frame_skip)
         EzPickle.__init__(self)
 
+    def close(self):
+        if self.viewer is not None and hasattr(self.viewer, "window"):
+            import glfw
+
+            glfw.destroy_window(self.viewer.window)
+        super().close()
+
     @abstractmethod
     def _get_obs(self) -> np.ndarray:
         """Returns the observation from the model.

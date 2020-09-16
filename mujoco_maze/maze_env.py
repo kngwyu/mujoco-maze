@@ -453,3 +453,6 @@ class MazeEnv(gym.Env):
         done = self._task.termination(next_obs)
         info["position"] = self.wrapped_env.get_xy()
         return next_obs, inner_reward + outer_reward, done, info
+
+    def close(self):
+        self.wrapped_env.close()
