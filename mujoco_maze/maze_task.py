@@ -249,7 +249,7 @@ class GoalRewardTRoom(MazeTask):
     def __init__(
         self,
         scale: float,
-        goals: List[Tuple[float, float]] = [(2.0, -3.0)],
+        goals: List[Tuple[float, float]] = [(2.0, -4.0)],
     ) -> None:
         super().__init__(scale)
         self.goals = []
@@ -270,6 +270,7 @@ class GoalRewardTRoom(MazeTask):
             [B, E, E, B, E, E, B],
             [B, E, E, B, E, E, B],
             [B, E, B, B, B, E, B],
+            [B, E, E, E, E, E, B],
             [B, E, E, R, E, E, B],
             [B, B, B, B, B, B, B],
         ]
