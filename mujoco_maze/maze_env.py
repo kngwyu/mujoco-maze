@@ -48,7 +48,7 @@ class MazeEnv(gym.Env):
         self.t = 0  # time steps
         self._observe_blocks = self._task.OBSERVE_BLOCKS
         self._put_spin_near_agent = self._task.PUT_SPIN_NEAR_AGENT
-        self._top_down_view = top_down_view
+        self._top_down_view = self._task.TOP_DOWN_VIEW
         self._restitution_coef = restitution_coef
 
         self._maze_structure = structure = self._task.create_maze()
@@ -247,6 +247,10 @@ class MazeEnv(gym.Env):
         self.world_tree = tree
         self.wrapped_env = model_cls(*args, file_path=file_path, **kwargs)
         self.observation_space = self._get_obs_space()
+
+    @property
+    def has_extended_obs(self) -> bool:
+        return self._top_down_view or self._observe_blocks
 
     def get_ori(self) -> float:
         return self.wrapped_env.get_ori()

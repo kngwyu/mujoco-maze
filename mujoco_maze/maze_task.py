@@ -52,6 +52,7 @@ class MazeTask(ABC):
     REWARD_THRESHOLD: float
     MAZE_SIZE_SCALING: Scaling = Scaling(8.0, 4.0)
     INNER_REWARD_SCALING: float = 0.01
+    TOP_DOWN_VIEW: bool = False
     OBSERVE_BLOCKS: bool = False
     PUT_SPIN_NEAR_AGENT: bool = False
 
@@ -114,6 +115,8 @@ class DistRewardUMaze(GoalRewardUMaze, DistRewardMixIn):
 
 
 class GoalRewardPush(GoalRewardUMaze):
+    TOP_DOWN_VIEW = True
+
     def __init__(self, scale: float) -> None:
         super().__init__(scale)
         self.goals = [MazeGoal(np.array([0.0, 2.375 * scale]))]
@@ -135,6 +138,8 @@ class DistRewardPush(GoalRewardPush, DistRewardMixIn):
 
 
 class GoalRewardFall(GoalRewardUMaze):
+    TOP_DOWN_VIEW = True
+
     def __init__(self, scale: float) -> None:
         super().__init__(scale)
         self.goals = [MazeGoal(np.array([0.0, 3.375 * scale, 4.5]))]
