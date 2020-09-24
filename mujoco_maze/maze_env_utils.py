@@ -138,6 +138,7 @@ class Collision:
 class CollisionDetector:
     """For manual collision detection.
     """
+
     EPS: float = 0.05
     NEIGHBORS: List[Tuple[int, int]] = [[0, -1], [-1, 0], [0, 1], [1, 0]]
 

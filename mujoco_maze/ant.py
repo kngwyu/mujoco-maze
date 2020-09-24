@@ -6,7 +6,7 @@ Based on `models`_ and `gym`_ (both ant and ant-v3).
 .. _gym: https://github.com/openai/gym
 """
 
-from typing import Callable, Optional, Tuple
+from typing import Callable, Tuple
 
 import numpy as np
 
@@ -39,14 +39,15 @@ class AntEnv(AgentModel):
     FILE: str = "ant.xml"
     ORI_IND: int = 3
     MANUAL_COLLISION: bool = False
-    RADIUS: float = 0.2
 
     def __init__(
         self,
-        file_path: Optional[str] = None,
-        ctrl_cost_weight: float = 0.0001,
+        file_path: str,
+        forward_reward_weight: float = 1.0,
+        ctrl_cost_weight: float = 1e-4,
         forward_reward_fn: ForwardRewardFn = forward_reward_vnorm,
     ) -> None:
+        self._forward_reward_weight = forward_reward_weight
         self._ctrl_cost_weight = ctrl_cost_weight
         self._forward_reward_fn = forward_reward_fn
         super().__init__(file_path, 5)
@@ -63,12 +64,11 @@ class AntEnv(AgentModel):
         forward_reward = self._forward_reward(xy_pos_before)
         ctrl_cost = self._ctrl_cost_weight * np.square(action).sum()
 
-        ob = self._get_obs()
         return (
-            ob,
-            forward_reward - ctrl_cost,
+            self._get_obs(),
+            self._forward_reward_weight * forward_reward - ctrl_cost,
             False,
-            dict(reward_forward=forward_reward, reward_ctrl=-ctrl_cost,),
+            dict(reward_forward=forward_reward, reward_ctrl=-ctrl_cost),
         )
 
     def _get_obs(self):
@@ -82,7 +82,7 @@ class AntEnv(AgentModel):
 
     def reset_model(self):
         qpos = self.init_qpos + self.np_random.uniform(
-            size=self.model.nq, low=-0.1, high=0.1
+            size=self.model.nq, low=-0.1, high=0.1,
         )
         qvel = self.init_qvel + self.np_random.randn(self.model.nv) * 0.1
 
@@ -92,18 +92,17 @@ class AntEnv(AgentModel):
         self.set_state(qpos, qvel)
         return self._get_obs()
 
-    def get_ori(self):
+    def get_ori(self) -> np.ndarray:
         ori = [0, 1, 0, 0]
-        ori_ind = self.ORI_IND
-        rot = self.sim.data.qpos[ori_ind : ori_ind + 4]  # take the quaternion
+        rot = self.sim.data.qpos[self.ORI_IND : self.ORI_IND + 4]  # take the quaternion
         ori = q_mult(q_mult(rot, ori), q_inv(rot))[1:3]  # project onto x-y plane
         ori = np.arctan2(ori[1], ori[0])
         return ori
 
-    def set_xy(self, xy):
+    def set_xy(self, xy: np.ndarray) -> None:
         qpos = self.sim.data.qpos.copy()
         qpos[:2] = xy
         self.set_state(qpos, self.sim.data.qvel)
 
-    def get_xy(self):
+    def get_xy(self) -> np.ndarray:
         return np.copy(self.sim.data.qpos[:2])

@@ -46,11 +46,12 @@ class MazeGoal:
 class Scaling(NamedTuple):
     ant: float
     point: float
+    swimmer: float
 
 
 class MazeTask(ABC):
     REWARD_THRESHOLD: float
-    MAZE_SIZE_SCALING: Scaling = Scaling(8.0, 4.0)
+    MAZE_SIZE_SCALING: Scaling = Scaling(8.0, 4.0, 4.0)
     INNER_REWARD_SCALING: float = 0.01
     TOP_DOWN_VIEW: bool = False
     OBSERVE_BLOCKS: bool = False
@@ -86,6 +87,32 @@ class DistRewardMixIn:
 
     def reward(self, obs: np.ndarray) -> float:
         return -self.goals[0].euc_dist(obs) / self.scale
+
+
+class GoalRewardSimpleRoom(MazeTask):
+    """ Very easy task. For testing.
+    """
+    REWARD_THRESHOLD: float = 0.9
+
+    def __init__(self, scale: float) -> None:
+        super().__init__(scale)
+        self.goals = [MazeGoal(np.array([2.0 * scale, 0.0]))]
+
+    def reward(self, obs: np.ndarray) -> float:
+        return 1.0 if self.termination(obs) else -0.0001
+
+    @staticmethod
+    def create_maze() -> List[List[MazeCell]]:
+        E, B, R = MazeCell.EMPTY, MazeCell.BLOCK, MazeCell.ROBOT
+        return [
+            [B, B, B, B, B],
+            [B, R, E, E, B],
+            [B, B, B, B, B],
+        ]
+
+
+class DistRewardSimpleRoom(GoalRewardSimpleRoom, DistRewardMixIn):
+    pass
 
 
 class GoalRewardUMaze(MazeTask):
@@ -163,7 +190,7 @@ class DistRewardFall(GoalRewardFall, DistRewardMixIn):
 
 class GoalReward2Rooms(MazeTask):
     REWARD_THRESHOLD: float = 0.9
-    MAZE_SIZE_SCALING: Scaling = Scaling(4.0, 4.0)
+    MAZE_SIZE_SCALING: Scaling = Scaling(4.0, 4.0, 4.0)
 
     def __init__(self, scale: float) -> None:
         super().__init__(scale)
@@ -201,7 +228,7 @@ class SubGoal2Rooms(GoalReward2Rooms):
 
 class GoalReward4Rooms(MazeTask):
     REWARD_THRESHOLD: float = 0.9
-    MAZE_SIZE_SCALING: Scaling = Scaling(4.0, 4.0)
+    MAZE_SIZE_SCALING: Scaling = Scaling(4.0, 4.0, 4.0)
 
     def __init__(self, scale: float) -> None:
         super().__init__(scale)
@@ -244,12 +271,10 @@ class SubGoal4Rooms(GoalReward4Rooms):
 
 class GoalRewardTRoom(MazeTask):
     REWARD_THRESHOLD: float = 0.9
-    MAZE_SIZE_SCALING: Scaling = Scaling(4.0, 4.0)
+    MAZE_SIZE_SCALING: Scaling = Scaling(4.0, 4.0, 4.0)
 
     def __init__(
-        self,
-        scale: float,
-        goals: List[Tuple[float, float]] = [(2.0, -3.0)],
+        self, scale: float, goals: List[Tuple[float, float]] = [(2.0, -3.0)],
     ) -> None:
         super().__init__(scale)
         self.goals = []
@@ -281,6 +306,7 @@ class DistRewardTRoom(GoalRewardTRoom, DistRewardMixIn):
 
 class TaskRegistry:
     REGISTRY: Dict[str, List[Type[MazeTask]]] = {
+        "SimpleRoom": [DistRewardSimpleRoom, GoalRewardSimpleRoom],
         "UMaze": [DistRewardUMaze, GoalRewardUMaze],
         "Push": [DistRewardPush, GoalRewardPush],
         "Fall": [DistRewardFall, GoalRewardFall],

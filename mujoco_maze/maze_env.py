@@ -64,9 +64,14 @@ class MazeEnv(gym.Env):
             (x - torso_x, y - torso_y) for x, y in self._find_all_robots()
         ]
 
-        self._collision = maze_env_utils.CollisionDetector(
-            structure, size_scaling, torso_x, torso_y, model_cls.RADIUS,
-        )
+        if model_cls.MANUAL_COLLISION:
+            if model_cls.RADIUS is None:
+                raise ValueError("Manual collision needs radius of the model")
+            self._collision = maze_env_utils.CollisionDetector(
+                structure, size_scaling, torso_x, torso_y, model_cls.RADIUS,
+            )
+        else:
+            self._collision = None
 
         self._xy_to_rowcol = lambda x, y: (
             2 + (y + size_scaling / 2) / size_scaling,
@@ -226,7 +231,7 @@ class MazeEnv(gym.Env):
         geoms = torso.findall(".//geom")
         for geom in geoms:
             if "name" not in geom.attrib:
-                raise Exception("Every geom of the torso must have a name " "defined")
+                raise Exception("Every geom of the torso must have a name")
 
         # Set goals
         asset = tree.find(".//asset")
@@ -344,7 +349,6 @@ class MazeEnv(gym.Env):
         robot_x, robot_y = self.wrapped_env.get_body_com("torso")[:2]
         self._robot_x = robot_x
         self._robot_y = robot_y
-        self._robot_ori = self.get_ori()
 
         structure = self._maze_structure
         size_scaling = self._maze_size_scaling
