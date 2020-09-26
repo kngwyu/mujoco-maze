@@ -145,11 +145,8 @@ class MazeEnv(gym.Env):
                     spinning = struct.can_spin()
                     shrink = 0.1 if spinning else 0.99 if falling else 1.0
                     height_shrink = 0.1 if spinning else 1.0
-                    x = (
-                        j * size_scaling - torso_x + 0.25 * size_scaling
-                        if spinning
-                        else 0.0
-                    )
+                    x_offset = 0.25 * size_scaling if spinning else 0.0
+                    x = j * size_scaling - torso_x + x_offset
                     y = i * size_scaling - torso_y
                     h = height / 2 * size_scaling * height_shrink
                     size = 0.5 * size_scaling * shrink
@@ -462,5 +459,5 @@ class MazeEnv(gym.Env):
         info["position"] = self.wrapped_env.get_xy()
         return next_obs, inner_reward + outer_reward, done, info
 
-    def close(self):
+    def close(self) -> None:
         self.wrapped_env.close()
