@@ -21,23 +21,28 @@ BLUE = Rgb(0.1, 0.1, 0.7)
 
 
 class MazeGoal:
-    THRESHOLD: float = 0.6
-
     def __init__(
-        self, pos: np.ndarray, reward_scale: float = 1.0, rgb: Rgb = RED
+        self,
+        pos: np.ndarray,
+        reward_scale: float = 1.0,
+        rgb: Rgb = RED,
+        threshold: float = 0.6,
+        custom_size: Optional[float] = None
     ) -> None:
         assert 0.0 <= reward_scale <= 1.0
         self.pos = pos
         self.dim = pos.shape[0]
         self.reward_scale = reward_scale
         self.rgb = rgb
+        self.threshold = threshold
+        self.custom_size = custom_size
 
     def rbga_str(self) -> str:
         r, g, b = self.rgb
         return f"{r} {g} {b} 1"
 
     def neighbor(self, obs: np.ndarray) -> float:
-        return np.linalg.norm(obs[: self.dim] - self.pos) <= self.THRESHOLD
+        return np.linalg.norm(obs[: self.dim] - self.pos) <= self.threshold
 
     def euc_dist(self, obs: np.ndarray) -> float:
         return np.sum(np.square(obs[: self.dim] - self.pos)) ** 0.5
@@ -56,6 +61,7 @@ class MazeTask(ABC):
     INNER_REWARD_SCALING: float = 0.01
     TOP_DOWN_VIEW: bool = False
     OBSERVE_BLOCKS: bool = False
+    OBSERVE_BALLS: bool = False
     PUT_SPIN_NEAR_AGENT: bool = False
 
     def __init__(self, scale: float) -> None:
@@ -145,11 +151,11 @@ class GoalRewardPush(GoalRewardUMaze):
 
     @staticmethod
     def create_maze() -> List[List[MazeCell]]:
-        E, B, R = MazeCell.EMPTY, MazeCell.BLOCK, MazeCell.ROBOT
+        E, B, R, M = MazeCell.EMPTY, MazeCell.BLOCK, MazeCell.ROBOT, MazeCell.XY_BLOCK
         return [
             [B, B, B, B, B],
             [B, E, R, B, B],
-            [B, E, MazeCell.XY, E, B],
+            [B, E, M, E, B],
             [B, B, E, B, B],
             [B, B, B, B, B],
         ]
@@ -169,10 +175,11 @@ class GoalRewardFall(GoalRewardUMaze):
     @staticmethod
     def create_maze() -> List[List[MazeCell]]:
         E, B, C, R = MazeCell.EMPTY, MazeCell.BLOCK, MazeCell.CHASM, MazeCell.ROBOT
+        M = MazeCell.YZ_BLOCK
         return [
             [B, B, B, B],
             [B, R, E, B],
-            [B, E, MazeCell.YZ, B],
+            [B, E, M, B],
             [B, C, C, B],
             [B, E, E, B],
             [B, B, B, B],
@@ -181,26 +188,6 @@ class GoalRewardFall(GoalRewardUMaze):
 
 class DistRewardFall(GoalRewardFall, DistRewardMixIn):
     pass
-
-
-class GoalRewardFall(GoalRewardUMaze):
-    TOP_DOWN_VIEW = True
-
-    def __init__(self, scale: float) -> None:
-        super().__init__(scale)
-        self.goals = [MazeGoal(np.array([0.0, 3.375 * scale, 4.5]))]
-
-    @staticmethod
-    def create_maze() -> List[List[MazeCell]]:
-        E, B, C, R = MazeCell.EMPTY, MazeCell.BLOCK, MazeCell.CHASM, MazeCell.ROBOT
-        return [
-            [B, B, B, B],
-            [B, R, E, B],
-            [B, E, MazeCell.YZ, B],
-            [B, C, C, B],
-            [B, E, E, B],
-            [B, B, B, B],
-        ]
 
 
 class GoalReward2Rooms(MazeTask):
@@ -291,13 +278,9 @@ class GoalRewardTRoom(MazeTask):
     PENALTY: float = -0.0001
     MAZE_SIZE_SCALING: Scaling = Scaling(4.0, 4.0, 4.0)
 
-    def __init__(
-        self, scale: float, goals: List[Tuple[float, float]] = [(2.0, -3.0)],
-    ) -> None:
+    def __init__(self, scale: float, goal: Tuple[float, float] = (2.0, -3.0)) -> None:
         super().__init__(scale)
-        self.goals = []
-        for x, y in goals:
-            self.goals.append(MazeGoal(np.array([x * scale, y * scale])))
+        self.goals = [MazeGoal(np.array(goal) * scale)]
 
     def reward(self, obs: np.ndarray) -> float:
         for goal in self.goals:
@@ -331,7 +314,8 @@ class GoalRewardBlockMaze(GoalRewardUMaze):
 
     @staticmethod
     def create_maze() -> List[List[MazeCell]]:
-        E, B, R, M = MazeCell.EMPTY, MazeCell.BLOCK, MazeCell.ROBOT, MazeCell.XY
+        E, B, R = MazeCell.EMPTY, MazeCell.BLOCK, MazeCell.ROBOT
+        M = MazeCell.XY_BLOCK
         return [
             [B, B, B, B, B],
             [B, R, E, E, B],
@@ -346,6 +330,41 @@ class DistRewardBlockMaze(GoalRewardBlockMaze, DistRewardMixIn):
     pass
 
 
+class GoalRewardRolling(MazeTask):
+    REWARD_THRESHOLD: float = 0.9
+    PENALTY: float = -0.0001
+    MAZE_SIZE_SCALING: Scaling = Scaling(4.0, 3.0, 3.0)
+    OBSERVE_BALLS: bool = True
+
+    def __init__(self, scale: float, goal: Tuple[float, float] = (1.0, -2.0)) -> None:
+        super().__init__(scale)
+        goal = np.array(goal) * scale
+        self.goals = [MazeGoal(goal, threshold=1.25, custom_size=0.25)]
+
+    def reward(self, obs: np.ndarray) -> float:
+        return 1.0 if self.termination(obs) else self.PENALTY
+
+    def termination(self, obs: np.ndarray) -> bool:
+        return super().termination(obs[3:6])
+
+    @staticmethod
+    def create_maze() -> List[List[MazeCell]]:
+        E, B = MazeCell.EMPTY, MazeCell.BLOCK
+        R, M = MazeCell.ROBOT, MazeCell.OBJECT_BALL
+        return [
+            [B, B, B, B, B],
+            [B, E, E, E, B],
+            [B, E, M, E, B],
+            [B, E, R, E, B],
+            [B, B, B, B, B],
+        ]
+
+
+class DistRewardRolling(GoalRewardRolling):
+    def reward(self, obs: np.ndarray) -> float:
+        return -self.goals[0].euc_dist(obs[3:6]) / self.scale
+
+
 class TaskRegistry:
     REGISTRY: Dict[str, List[Type[MazeTask]]] = {
         "SimpleRoom": [DistRewardSimpleRoom, GoalRewardSimpleRoom],
@@ -356,6 +375,7 @@ class TaskRegistry:
         "4Rooms": [DistReward4Rooms, GoalReward4Rooms, SubGoal4Rooms],
         "TRoom": [DistRewardTRoom, GoalRewardTRoom],
         "BlockMaze": [DistRewardBlockMaze, GoalRewardBlockMaze],
+        "Rolling": [DistRewardRolling, GoalRewardRolling],
     }
 
     @staticmethod

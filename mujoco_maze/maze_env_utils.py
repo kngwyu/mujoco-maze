@@ -23,21 +23,23 @@ class MazeCell(Enum):
     EMPTY = 0
     BLOCK = 1
     CHASM = 2
+    OBJECT_BALL = 3
     # Moves
-    X = 11
-    Y = 12
-    Z = 13
-    XY = 14
-    XZ = 15
-    YZ = 16
-    XYZ = 17
-    SpinXY = 18
+    XY_BLOCK = 14
+    XZ_BLOCK = 15
+    YZ_BLOCK = 16
+    XYZ_BLOCK = 17
+    XY_HALF_BLOCK = 18
+    SPIN = 19
 
     def is_block(self) -> bool:
         return self == self.BLOCK
 
     def is_chasm(self) -> bool:
         return self == self.CHASM
+
+    def is_object_ball(self) -> bool:
+        return self == self.OBJECT_BALL
 
     def is_empty(self) -> bool:
         return self == self.ROBOT or self == self.EMPTY
@@ -50,30 +52,33 @@ class MazeCell(Enum):
 
     def can_move_x(self) -> bool:
         return self in [
-            self.X,
-            self.XY,
-            self.XZ,
-            self.XYZ,
-            self.SpinXY,
+            self.XY_BLOCK,
+            self.XY_HALF_BLOCK,
+            self.XZ_BLOCK,
+            self.XYZ_BLOCK,
+            self.SPIN,
         ]
 
-    def can_move_y(self):
+    def can_move_y(self) -> bool:
         return self in [
-            self.Y,
-            self.XY,
-            self.YZ,
-            self.XYZ,
-            self.SpinXY,
+            self.XY_BLOCK,
+            self.XY_HALF_BLOCK,
+            self.YZ_BLOCK,
+            self.XYZ_BLOCK,
+            self.SPIN,
         ]
 
-    def can_move_z(self):
-        return self in [self.Z, self.XZ, self.YZ, self.XYZ]
+    def can_move_z(self) -> bool:
+        return self in [self.XZ_BLOCK, self.YZ_BLOCK, self.XYZ_BLOCK]
 
-    def can_spin(self):
-        return self == self.SpinXY
+    def can_spin(self) -> bool:
+        return self == self.SPIN
 
-    def can_move(self):
+    def can_move(self) -> bool:
         return self.can_move_x() or self.can_move_y() or self.can_move_z()
+
+    def is_half_block(self) -> bool:
+        return self in [self.XY_HALF_BLOCK]
 
 
 class Line:

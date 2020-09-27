@@ -48,6 +48,8 @@ class MazeEnv(gym.Env):
         self.t = 0  # time steps
         self._observe_blocks = self._task.OBSERVE_BLOCKS
         self._put_spin_near_agent = self._task.PUT_SPIN_NEAR_AGENT
+        # Observe other objectives
+        self._observe_balls = self._task.OBSERVE_BALLS
         self._top_down_view = self._task.TOP_DOWN_VIEW
         self._restitution_coef = restitution_coef
 
@@ -93,17 +95,17 @@ class MazeEnv(gym.Env):
             default.find(".//geom").set("solimp", ".995 .995 .01")
 
         self.movable_blocks = []
+        self.object_balls = []
         for i in range(len(structure)):
             for j in range(len(structure[0])):
                 struct = structure[i][j]
                 if struct.is_robot() and self._put_spin_near_agent:
-                    struct = maze_env_utils.MazeCell.SpinXY
+                    struct = maze_env_utils.MazeCell.SPIN
+                x, y = j * size_scaling - torso_x, i * size_scaling - torso_y
+                h = height / 2 * size_scaling
+                size = size_scaling * 0.5
                 if self.elevated and not struct.is_chasm():
                     # Create elevated platform.
-                    x = j * size_scaling - torso_x
-                    y = i * size_scaling - torso_y
-                    h = height / 2 * size_scaling
-                    size = 0.5 * size_scaling
                     ET.SubElement(
                         worldbody,
                         "geom",
@@ -119,10 +121,6 @@ class MazeEnv(gym.Env):
                 if struct.is_block():
                     # Unmovable block.
                     # Offset all coordinates so that robot starts at the origin.
-                    x = j * size_scaling - torso_x
-                    y = i * size_scaling - torso_y
-                    h = height / 2 * size_scaling
-                    size = 0.5 * size_scaling
                     ET.SubElement(
                         worldbody,
                         "geom",
@@ -137,92 +135,14 @@ class MazeEnv(gym.Env):
                     )
                 elif struct.can_move():
                     # Movable block.
-                    # The "falling" blocks are shrunk slightly and increased in mass to
-                    # ensure it can fall easily through a gap in the platform blocks.
-                    name = "movable_%d_%d" % (i, j)
-                    self.movable_blocks.append((name, struct))
-                    falling = struct.can_move_z()
-                    spinning = struct.can_spin()
-                    shrink = 0.1 if spinning else 0.99 if falling else 1.0
-                    height_shrink = 0.1 if spinning else 1.0
-                    x_offset = 0.25 * size_scaling if spinning else 0.0
-                    x = j * size_scaling - torso_x + x_offset
-                    y = i * size_scaling - torso_y
-                    h = height / 2 * size_scaling * height_shrink
-                    size = 0.5 * size_scaling * shrink
-                    movable_body = ET.SubElement(
-                        worldbody,
-                        "body",
-                        name=name,
-                        pos=f"{x} {y} {height_offset + h}",
+                    self.movable_blocks.append(f"movable_{i}_{j}")
+                    _add_movable_block(
+                        worldbody, struct, i, j, size_scaling, x, y, h, height_offset,
                     )
-                    ET.SubElement(
-                        movable_body,
-                        "geom",
-                        name=f"block_{i}_{j}",
-                        pos="0 0 0",
-                        size=f"{size} {size} {h}",
-                        type="box",
-                        material="",
-                        mass="0.001" if falling else "0.0002",
-                        contype="1",
-                        conaffinity="1",
-                        rgba="0.9 0.1 0.1 1",
-                    )
-                    if struct.can_move_x():
-                        ET.SubElement(
-                            movable_body,
-                            "joint",
-                            armature="0",
-                            axis="1 0 0",
-                            damping="0.0",
-                            limited="true" if falling else "false",
-                            range=f"{-size_scaling} {size_scaling}",
-                            margin="0.01",
-                            name=f"movable_x_{i}_{j}",
-                            pos="0 0 0",
-                            type="slide",
-                        )
-                    if struct.can_move_y():
-                        ET.SubElement(
-                            movable_body,
-                            "joint",
-                            armature="0",
-                            axis="0 1 0",
-                            damping="0.0",
-                            limited="true" if falling else "false",
-                            range=f"{-size_scaling} {size_scaling}",
-                            margin="0.01",
-                            name=f"movable_y_{i}_{j}",
-                            pos="0 0 0",
-                            type="slide",
-                        )
-                    if struct.can_move_z():
-                        ET.SubElement(
-                            movable_body,
-                            "joint",
-                            armature="0",
-                            axis="0 0 1",
-                            damping="0.0",
-                            limited="true",
-                            range=f"{-height_offset} 0",
-                            margin="0.01",
-                            name=f"movable_z_{i}_{j}",
-                            pos="0 0 0",
-                            type="slide",
-                        )
-                    if struct.can_spin():
-                        ET.SubElement(
-                            movable_body,
-                            "joint",
-                            armature="0",
-                            axis="0 0 1",
-                            damping="0.0",
-                            limited="false",
-                            name=f"spinable_{i}_{j}",
-                            pos="0 0 0",
-                            type="ball",
-                        )
+                elif struct.is_object_ball():
+                    # Movable Ball
+                    self.object_balls.append(f"objball_{i}_{j}")
+                    _add_object_ball(worldbody, i, j, x, y)
 
         torso = tree.find(".//body[@name='torso']")
         geoms = torso.findall(".//geom")
@@ -231,17 +151,19 @@ class MazeEnv(gym.Env):
                 raise Exception("Every geom of the torso must have a name")
 
         # Set goals
-        asset = tree.find(".//asset")
         for i, goal in enumerate(self._task.goals):
-            ET.SubElement(asset, "material", name=f"goal{i}", rgba=goal.rbga_str())
             z = goal.pos[2] if goal.dim >= 3 else 0.0
+            if goal.custom_size is None:
+                size = f"{maze_size_scaling * 0.1}"
+            else:
+                size = f"{goal.custom_size}"
             ET.SubElement(
                 worldbody,
                 "site",
                 name=f"goal_site{i}",
                 pos=f"{goal.pos[0]} {goal.pos[1]} {z}",
                 size=f"{maze_size_scaling * 0.1}",
-                material=f"goal{i}",
+                rgba=goal.rbga_str(),
             )
 
         _, file_path = tempfile.mkstemp(text=True, suffix=".xml")
@@ -252,7 +174,7 @@ class MazeEnv(gym.Env):
 
     @property
     def has_extended_obs(self) -> bool:
-        return self._top_down_view or self._observe_blocks
+        return self._top_down_view or self._observe_blocks or self._observe_balls
 
     def get_ori(self) -> float:
         return self.wrapped_env.get_ori()
@@ -367,7 +289,7 @@ class MazeEnv(gym.Env):
                     )
 
         # Draw movable blocks.
-        for block_name, block_type in self.movable_blocks:
+        for block_name in self.movable_blocks:
             block_x, block_y = self.wrapped_env.get_body_com(block_name)[:2]
             update_view(block_x, block_y, 2)
 
@@ -380,15 +302,18 @@ class MazeEnv(gym.Env):
         else:
             view = []
 
-        if self._observe_blocks:
-            additional_obs = []
-            for block_name, block_type in self.movable_blocks:
-                additional_obs.append(self.wrapped_env.get_body_com(block_name))
-            wrapped_obs = np.concatenate(
-                [wrapped_obs[:3]] + additional_obs + [wrapped_obs[3:]]
-            )
+        additional_obs = []
 
-        return np.concatenate([wrapped_obs, *view, np.array([self.t * 0.001])])
+        if self._observe_balls:
+            for name in self.object_balls:
+                additional_obs.append(self.wrapped_env.get_body_com(name))
+
+        if self._observe_blocks:
+            for name in self.movable_blocks:
+                additional_obs.append(self.wrapped_env.get_body_com(name))
+
+        obs = np.concatenate([wrapped_obs[:3]] + additional_obs + [wrapped_obs[3:]])
+        return np.concatenate([obs, *view, np.array([self.t * 0.001])])
 
     def reset(self) -> np.ndarray:
         self.t = 0
@@ -461,3 +386,142 @@ class MazeEnv(gym.Env):
 
     def close(self) -> None:
         self.wrapped_env.close()
+
+
+def _add_object_ball(worldbody: ET.Element, i: str, j: str, x: float, y: float) -> None:
+    body = ET.SubElement(worldbody, "body", name=f"objball_{i}_{j}", pos=f"{x} {y} 0",)
+    ET.SubElement(
+        body,
+        "geom",
+        type="sphere",
+        name=f"objball_geom_{i}_{j}",
+        size="1",
+        pos="0.0 0.0 0.5",
+        rgba="0.1 0.1 0.7 1",
+        contype="1",
+        conaffinity="1",
+        mass="0.00004",
+        solimp="0.9 0.99 0.001"
+    )
+    ET.SubElement(
+        body,
+        "joint",
+        name=f"objball_x_{i}_{j}",
+        axis="1 0 0",
+        pos="0 0 0.0",
+        type="slide",
+    )
+    ET.SubElement(
+        body,
+        "joint",
+        name=f"objball_y_{i}_{j}",
+        axis="0 1 0",
+        pos="0 0 0",
+        type="slide",
+    )
+    ET.SubElement(
+        body,
+        "joint",
+        name=f"objball_rot_{i}_{j}",
+        axis="0 0 1",
+        pos="0 0 0",
+        type="hinge",
+        limited="false",
+    )
+
+
+def _add_movable_block(
+    worldbody: ET.Element,
+    struct: maze_env_utils.MazeCell,
+    i: str,
+    j: str,
+    size_scaling: float,
+    x: float,
+    y: float,
+    h: float,
+    height_offset: float,
+) -> None:
+    falling = struct.can_move_z()
+    if struct.can_spin():
+        h *= 0.1
+        x += size_scaling * 0.25
+        shrink = 0.1
+    elif falling:
+        # The "falling" blocks are shrunk slightly and increased in mass to
+        # ensure it can fall easily through a gap in the platform blocks.
+        shrink = 0.99
+    elif struct.is_half_block():
+        shrink = 0.5
+    else:
+        shrink = 1.0
+    size = size_scaling * 0.5 * shrink
+    movable_body = ET.SubElement(
+        worldbody, "body", name=f"movable_{i}_{j}", pos=f"{x} {y} {h}",
+    )
+    ET.SubElement(
+        movable_body,
+        "geom",
+        name=f"block_{i}_{j}",
+        pos="0 0 0",
+        size=f"{size} {size} {h}",
+        type="box",
+        material="",
+        mass="0.001" if falling else "0.0002",
+        contype="1",
+        conaffinity="1",
+        rgba="0.9 0.1 0.1 1",
+    )
+    if struct.can_move_x():
+        ET.SubElement(
+            movable_body,
+            "joint",
+            axis="1 0 0",
+            name=f"movable_x_{i}_{j}",
+            armature="0",
+            damping="0.0",
+            limited="true" if falling else "false",
+            range=f"{-size_scaling} {size_scaling}",
+            margin="0.01",
+            pos="0 0 0",
+            type="slide",
+        )
+    if struct.can_move_y():
+        ET.SubElement(
+            movable_body,
+            "joint",
+            armature="0",
+            axis="0 1 0",
+            damping="0.0",
+            limited="true" if falling else "false",
+            range=f"{-size_scaling} {size_scaling}",
+            margin="0.01",
+            name=f"movable_y_{i}_{j}",
+            pos="0 0 0",
+            type="slide",
+        )
+    if struct.can_move_z():
+        ET.SubElement(
+            movable_body,
+            "joint",
+            armature="0",
+            axis="0 0 1",
+            damping="0.0",
+            limited="true",
+            range=f"{-height_offset} 0",
+            margin="0.01",
+            name=f"movable_z_{i}_{j}",
+            pos="0 0 0",
+            type="slide",
+        )
+    if struct.can_spin():
+        ET.SubElement(
+            movable_body,
+            "joint",
+            armature="0",
+            axis="0 0 1",
+            damping="0.0",
+            limited="false",
+            name=f"spinable_{i}_{j}",
+            pos="0 0 0",
+            type="ball",
+        )
