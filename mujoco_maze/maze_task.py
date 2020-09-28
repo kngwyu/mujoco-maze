@@ -59,10 +59,14 @@ class MazeTask(ABC):
     PENALTY: Optional[float] = None
     MAZE_SIZE_SCALING: Scaling = Scaling(8.0, 4.0, 4.0)
     INNER_REWARD_SCALING: float = 0.01
-    TOP_DOWN_VIEW: bool = False
+    # For Fall/Push/BlockMaze
     OBSERVE_BLOCKS: bool = False
+    # For Billiard
     OBSERVE_BALLS: bool = False
+    OBJECT_BALL_SIZE: float = 1.0
+    # Unused now
     PUT_SPIN_NEAR_AGENT: bool = False
+    TOP_DOWN_VIEW: bool = False
 
     def __init__(self, scale: float) -> None:
         self.goals = []
@@ -143,7 +147,7 @@ class DistRewardSimpleRoom(GoalRewardSimpleRoom, DistRewardMixIn):
 
 
 class GoalRewardPush(GoalRewardUMaze):
-    TOP_DOWN_VIEW = True
+    OBSERVE_BLOCKS: bool = True
 
     def __init__(self, scale: float) -> None:
         super().__init__(scale)
@@ -166,7 +170,7 @@ class DistRewardPush(GoalRewardPush, DistRewardMixIn):
 
 
 class GoalRewardFall(GoalRewardUMaze):
-    TOP_DOWN_VIEW = True
+    OBSERVE_BLOCKS: bool = True
 
     def __init__(self, scale: float) -> None:
         super().__init__(scale)
@@ -336,10 +340,12 @@ class GoalRewardBilliard(MazeTask):
     MAZE_SIZE_SCALING: Scaling = Scaling(4.0, 3.0, 3.0)
     OBSERVE_BALLS: bool = True
 
-    def __init__(self, scale: float, goal: Tuple[float, float] = (1.0, -2.0)) -> None:
+    def __init__(self, scale: float, goal: Tuple[float, float] = (2.0, -3.0)) -> None:
         super().__init__(scale)
         goal = np.array(goal) * scale
-        self.goals = [MazeGoal(goal, threshold=1.25, custom_size=0.25)]
+        goal_size = 0.3
+        threshold = goal_size + self.OBJECT_BALL_SIZE
+        self.goals = [MazeGoal(goal, threshold=threshold, custom_size=goal_size)]
 
     def reward(self, obs: np.ndarray) -> float:
         return 1.0 if self.termination(obs) else self.PENALTY
@@ -352,11 +358,12 @@ class GoalRewardBilliard(MazeTask):
         E, B = MazeCell.EMPTY, MazeCell.BLOCK
         R, M = MazeCell.ROBOT, MazeCell.OBJECT_BALL
         return [
-            [B, B, B, B, B],
-            [B, E, E, E, B],
-            [B, E, M, E, B],
-            [B, E, R, E, B],
-            [B, B, B, B, B],
+            [B, B, B, B, B, B, B],
+            [B, E, E, E, E, E, B],
+            [B, E, E, E, E, E, B],
+            [B, E, E, M, E, E, B],
+            [B, E, E, R, E, E, B],
+            [B, B, B, B, B, B, B],
         ]
 
 
