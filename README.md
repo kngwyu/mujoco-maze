@@ -32,9 +32,10 @@ Thankfully, this project is based on the code from  [rllab] and [tensorflow/mode
   - PointFall-v0/AntFall-v0 (Distance-based Reward)
   - PointFall-v1/AntFall-v1 (Goal-based Reward)
 
-## Caveats
-This project has some other features (e.g., block maze and other
-robots) but they are work in progress.
+## Warning
+This project has some other environments (e.g., billiard, reacher, and
+swimmer) but if they are not on README, they are work in progress and
+not tested well.
 
 ## License
 This project is licensed under Apache License, Version 2.0
