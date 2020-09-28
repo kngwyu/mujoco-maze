@@ -6,7 +6,7 @@ import mujoco_maze
 
 @pytest.mark.parametrize("maze_id", mujoco_maze.TaskRegistry.keys())
 def test_ant_maze(maze_id):
-    if "Rolling" in maze_id:
+    if "Billiard" in maze_id:
         return
     for i in range(2):
         env = gym.make(f"Ant{maze_id}-v{i}")
@@ -38,7 +38,7 @@ def test_point_maze(maze_id):
 
 @pytest.mark.parametrize("maze_id", mujoco_maze.TaskRegistry.keys())
 def test_reacher_maze(maze_id):
-    for inhibited in ["Fall", "Push", "Block", "Rolling"]:
+    for inhibited in ["Fall", "Push", "Block", "Billiard"]:
         if inhibited in maze_id:
             return
     for i in range(2):
@@ -52,7 +52,7 @@ def test_reacher_maze(maze_id):
 
 @pytest.mark.parametrize("maze_id", mujoco_maze.TaskRegistry.keys())
 def test_swimmer_maze(maze_id):
-    for inhibited in ["Fall", "Push", "Block", "Rolling"]:
+    for inhibited in ["Fall", "Push", "Block", "Billiard"]:
         if inhibited in maze_id:
             return
     for i in range(2):

@@ -27,7 +27,7 @@ class MazeGoal:
         reward_scale: float = 1.0,
         rgb: Rgb = RED,
         threshold: float = 0.6,
-        custom_size: Optional[float] = None
+        custom_size: Optional[float] = None,
     ) -> None:
         assert 0.0 <= reward_scale <= 1.0
         self.pos = pos
@@ -330,7 +330,7 @@ class DistRewardBlockMaze(GoalRewardBlockMaze, DistRewardMixIn):
     pass
 
 
-class GoalRewardRolling(MazeTask):
+class GoalRewardBilliard(MazeTask):
     REWARD_THRESHOLD: float = 0.9
     PENALTY: float = -0.0001
     MAZE_SIZE_SCALING: Scaling = Scaling(4.0, 3.0, 3.0)
@@ -360,7 +360,7 @@ class GoalRewardRolling(MazeTask):
         ]
 
 
-class DistRewardRolling(GoalRewardRolling):
+class DistRewardBilliard(GoalRewardBilliard):
     def reward(self, obs: np.ndarray) -> float:
         return -self.goals[0].euc_dist(obs[3:6]) / self.scale
 
@@ -375,7 +375,7 @@ class TaskRegistry:
         "4Rooms": [DistReward4Rooms, GoalReward4Rooms, SubGoal4Rooms],
         "TRoom": [DistRewardTRoom, GoalRewardTRoom],
         "BlockMaze": [DistRewardBlockMaze, GoalRewardBlockMaze],
-        "Rolling": [DistRewardRolling, GoalRewardRolling],
+        "Billiard": [DistRewardBilliard, GoalRewardBilliard],
     }
 
     @staticmethod

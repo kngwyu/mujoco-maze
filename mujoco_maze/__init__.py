@@ -29,7 +29,7 @@ for maze_id in TaskRegistry.keys():
             max_episode_steps=1000,
             reward_threshold=task_cls.REWARD_THRESHOLD,
         )
-        if "Rolling" in maze_id:
+        if "Billiard" in maze_id:
             continue
         # Ant
         gym.envs.register(

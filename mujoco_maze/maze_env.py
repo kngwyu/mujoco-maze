@@ -72,6 +72,9 @@ class MazeEnv(gym.Env):
             self._collision = maze_env_utils.CollisionDetector(
                 structure, size_scaling, torso_x, torso_y, model_cls.RADIUS,
             )
+            self._objball_collision = maze_env_utils.CollisionDetector(
+                structure, size_scaling, torso_x, torso_y, 0.8,
+            )
         else:
             self._collision = None
 
@@ -360,12 +363,19 @@ class MazeEnv(gym.Env):
                 coords.append((j * size_scaling, i * size_scaling))
         return coords
 
-    def step(self, action) -> Tuple[np.ndarray, float, bool, dict]:
+    def _objball_positions(self) -> None:
+        return [
+            self.wrapped_env.get_body_com(name)[:2].copy() for name in self.object_balls
+        ]
+
+    def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, dict]:
         self.t += 1
         if self.wrapped_env.MANUAL_COLLISION:
             old_pos = self.wrapped_env.get_xy()
+            old_objballs = self._objball_positions()
             inner_next_obs, inner_reward, _, info = self.wrapped_env.step(action)
             new_pos = self.wrapped_env.get_xy()
+            new_objballs = self._objball_positions()
             # Checks that the new_position is in the wall
             collision = self._collision.detect(old_pos, new_pos)
             if collision is not None:
@@ -375,6 +385,14 @@ class MazeEnv(gym.Env):
                     self.wrapped_env.set_xy(old_pos)
                 else:
                     self.wrapped_env.set_xy(pos)
+            for name, old, new in zip(self.object_balls, old_objballs, new_objballs):
+                collision = self._objball_collision.detect(old, new)
+                if collision is not None:
+                    pos = collision.point + self._restitution_coef * collision.rest()
+                    if self._objball_collision.detect(old, pos) is not None:
+                        pos = old
+                    idx = self.wrapped_env.model.body_name2id(name)
+                    self.wrapped_env.data.xipos[idx][:2] = pos
         else:
             inner_next_obs, inner_reward, _, info = self.wrapped_env.step(action)
         next_obs = self._get_obs()
@@ -394,19 +412,19 @@ def _add_object_ball(worldbody: ET.Element, i: str, j: str, x: float, y: float) 
         body,
         "geom",
         type="sphere",
-        name=f"objball_geom_{i}_{j}",
-        size="1",
-        pos="0.0 0.0 0.5",
+        name=f"objball_{i}_{j}_geom",
+        size="1.0",  # Radius
+        pos="0.0 0.0 1.0",  # Z = 1.0 so that this ball can move!!
         rgba="0.1 0.1 0.7 1",
         contype="1",
         conaffinity="1",
-        mass="0.00004",
-        solimp="0.9 0.99 0.001"
+        solimp="0.9 0.99 0.001",
+        mass="0.0001",
     )
     ET.SubElement(
         body,
         "joint",
-        name=f"objball_x_{i}_{j}",
+        name=f"objball_{i}_{j}_x",
         axis="1 0 0",
         pos="0 0 0.0",
         type="slide",
@@ -414,7 +432,7 @@ def _add_object_ball(worldbody: ET.Element, i: str, j: str, x: float, y: float) 
     ET.SubElement(
         body,
         "joint",
-        name=f"objball_y_{i}_{j}",
+        name=f"objball_{i}_{j}_y",
         axis="0 1 0",
         pos="0 0 0",
         type="slide",
@@ -422,7 +440,7 @@ def _add_object_ball(worldbody: ET.Element, i: str, j: str, x: float, y: float) 
     ET.SubElement(
         body,
         "joint",
-        name=f"objball_rot_{i}_{j}",
+        name=f"objball_{i}_{j}_rot",
         axis="0 0 1",
         pos="0 0 0",
         type="hinge",
