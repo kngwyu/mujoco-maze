@@ -167,7 +167,7 @@ class MazeEnv(gym.Env):
                 name=f"goal_site{i}",
                 pos=f"{goal.pos[0]} {goal.pos[1]} {z}",
                 size=f"{maze_size_scaling * 0.1}",
-                rgba=goal.rbga_str(),
+                rgba=goal.rgb.rgba_str(),
             )
 
         _, file_path = tempfile.mkstemp(text=True, suffix=".xml")
@@ -420,7 +420,7 @@ def _add_object_ball(
         name=f"objball_{i}_{j}_geom",
         size=f"{size}",  # Radius
         pos=f"0.0 0.0 {size}",  # Z = size so that this ball can move!!
-        rgba="0.1 0.1 0.7 1",
+        rgba=maze_task.BLUE.rgba_str(),
         contype="1",
         conaffinity="1",
         solimp="0.9 0.99 0.001",
