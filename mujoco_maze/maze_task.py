@@ -374,6 +374,7 @@ class GoalRewardBilliard(MazeTask):
             [B, E, E, E, E, E, B],
             [B, E, E, M, E, E, B],
             [B, E, E, R, E, E, B],
+            [B, E, E, E, E, E, B],
             [B, B, B, B, B, B, B],
         ]
 
