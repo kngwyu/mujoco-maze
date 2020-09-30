@@ -198,9 +198,9 @@ class GoalReward2Rooms(MazeTask):
     PENALTY: float = -0.0001
     MAZE_SIZE_SCALING: Scaling = Scaling(4.0, 4.0, 4.0)
 
-    def __init__(self, scale: float) -> None:
+    def __init__(self, scale: float, goal: Tuple[int, int] = (4.0, -2.0)) -> None:
         super().__init__(scale)
-        self.goals = [MazeGoal(np.array([0.0, 4.0 * scale]))]
+        self.goals = [MazeGoal(np.array(goal) * scale)]
 
     def reward(self, obs: np.ndarray) -> float:
         for goal in self.goals:
@@ -213,10 +213,10 @@ class GoalReward2Rooms(MazeTask):
         E, B, R = MazeCell.EMPTY, MazeCell.BLOCK, MazeCell.ROBOT
         return [
             [B, B, B, B, B, B, B, B],
-            [B, R, E, E, E, E, E, B],
-            [B, E, E, E, E, E, E, B],
-            [B, B, B, B, B, E, B, B],
-            [B, E, E, E, E, E, E, B],
+            [B, E, E, E, B, E, E, B],
+            [B, E, E, E, B, E, E, B],
+            [B, E, R, E, B, E, E, B],
+            [B, E, E, E, B, E, E, B],
             [B, E, E, E, E, E, E, B],
             [B, B, B, B, B, B, B, B],
         ]
@@ -227,9 +227,17 @@ class DistReward2Rooms(GoalReward2Rooms, DistRewardMixIn):
 
 
 class SubGoal2Rooms(GoalReward2Rooms):
-    def __init__(self, scale: float) -> None:
-        super().__init__(scale)
-        self.goals.append(MazeGoal(np.array([5.0 * scale, 0.0 * scale]), 0.5, GREEN))
+    def __init__(
+        self,
+        scale: float,
+        primary_goal: Tuple[float, float] = (4.0, -2.0),
+        subgoals: List[Tuple[float, float]] = [(1.0, -2.0), (-1.0, 2.0)],
+    ) -> None:
+        super().__init__(scale, primary_goal)
+        for subgoal in subgoals:
+            self.goals.append(
+                MazeGoal(np.array(subgoal) * scale, reward_scale=0.5, rgb=GREEN)
+            )
 
 
 class GoalReward4Rooms(MazeTask):
@@ -388,8 +396,8 @@ class SubGoalBilliard(GoalRewardBilliard):
     def __init__(
         self,
         scale: float,
-        primary_goal: Tuple[float, float] = (4.0, -3.0),
-        subgoal: Tuple[float, float] = (4.0, 1.0),
+        primary_goal: Tuple[float, float] = (4.0, -2.0),
+        subgoal: Tuple[float, float] = (4.0, 2.0),
     ) -> None:
         super().__init__(scale, primary_goal)
         self.goals.append(
@@ -410,8 +418,8 @@ class SubGoalBilliard(GoalRewardBilliard):
             [B, B, B, B, B, B, B],
             [B, E, E, B, B, E, B],
             [B, E, E, E, E, E, B],
-            [B, E, E, E, B, B, B],
-            [B, R, M, E, E, E, B],
+            [B, R, M, E, B, B, B],
+            [B, E, E, E, E, E, B],
             [B, E, E, E, E, E, B],
             [B, B, B, B, B, B, B],
         ]
