@@ -316,6 +316,19 @@ class DistRewardTRoom(GoalRewardTRoom, DistRewardMixIn):
     pass
 
 
+class SubGoalTRoom(GoalRewardTRoom):
+    def __init__(
+        self,
+        scale: float,
+        primary_goal: Tuple[float, float] = (2.0, -3.0),
+        subgoal: Tuple[float, float] = (-2.0, -3.0),
+    ) -> None:
+        super().__init__(scale, primary_goal)
+        self.goals.append(
+            MazeGoal(np.array(subgoal) * scale, reward_scale=0.5, rgb=GREEN)
+        )
+
+
 class GoalRewardBlockMaze(GoalRewardUMaze):
     OBSERVE_BLOCKS: bool = True
 
@@ -444,7 +457,7 @@ class TaskRegistry:
         "Fall": [DistRewardFall, GoalRewardFall],
         "2Rooms": [DistReward2Rooms, GoalReward2Rooms, SubGoal2Rooms],
         "4Rooms": [DistReward4Rooms, GoalReward4Rooms, SubGoal4Rooms],
-        "TRoom": [DistRewardTRoom, GoalRewardTRoom],
+        "TRoom": [DistRewardTRoom, GoalRewardTRoom, SubGoalTRoom],
         "BlockMaze": [DistRewardBlockMaze, GoalRewardBlockMaze],
         "Billiard": [
             DistRewardBilliard,
