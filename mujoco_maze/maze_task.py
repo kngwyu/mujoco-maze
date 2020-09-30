@@ -388,8 +388,8 @@ class SubGoalBilliard(GoalRewardBilliard):
     def __init__(
         self,
         scale: float,
-        primary_goal: Tuple[float, float] = (2.0, -3.0),
-        subgoal: Tuple[float, float] = (-2.0, -3.0),
+        primary_goal: Tuple[float, float] = (4.0, -3.0),
+        subgoal: Tuple[float, float] = (4.0, 1.0),
     ) -> None:
         super().__init__(scale, primary_goal)
         self.goals.append(
@@ -408,10 +408,11 @@ class SubGoalBilliard(GoalRewardBilliard):
         R, M = MazeCell.ROBOT, MazeCell.OBJECT_BALL
         return [
             [B, B, B, B, B, B, B],
+            [B, E, E, B, B, E, B],
             [B, E, E, E, E, E, B],
             [B, E, E, E, B, B, B],
-            [B, E, E, M, E, E, B],
-            [B, E, E, R, E, E, B],
+            [B, R, M, E, E, E, B],
+            [B, E, E, E, E, E, B],
             [B, B, B, B, B, B, B],
         ]
 
