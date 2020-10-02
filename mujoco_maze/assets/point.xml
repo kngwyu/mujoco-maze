@@ -18,8 +18,8 @@
         <!--  ================= Point ================= /-->
         <!--  Note that the solimp is modified from rllab to prevent the point from going through the wall /-->
         <body name="torso" pos="0 0 0">
-            <geom name="pointbody" type="sphere" size="0.5" pos="0 0 0.5" solimp="0.9 0.99 0.001" />
-            <geom name="pointarrow" type="box" size="0.5 0.1 0.1" pos="0.6 0 0.5" solimp="0.9 0.99 0.001" />
+            <geom name="pointbody" type="sphere" size="0.5" pos="0 0 0.5" rgba="0.8 0.4 0.1 1" solimp="0.9 0.99 0.001" />
+            <geom name="pointarrow" type="box" size="0.5 0.1 0.1" pos="0.6 0 0.5" rgba="0.8 0.4 0.1 1" solimp="0.9 0.99 0.001" />
             <joint name="ballx" type="slide" axis="1 0 0" pos="0 0 0" />
             <joint name="bally" type="slide" axis="0 1 0" pos="0 0 0" />
             <joint name="rot" type="hinge" axis="0 0 1" pos="0 0 0" limited="false" />
