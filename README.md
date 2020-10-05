@@ -1,4 +1,5 @@
 # mujoco-maze
+[![Actions Status](https://github.com/kngwyu/mujoco-maze/workflows/CI/badge.svg)](https://github.com/kngwyu/mujoco-maze/actions)
 [![Black](https://img.shields.io/badge/code%20style-black-000.svg)](https://github.com/psf/black)
 
 Some maze environments for reinforcement learning(RL) using [mujoco-py] and
