@@ -43,7 +43,7 @@ Thankfully, this project is based on the code from  [rllab] and [tensorflow/mode
   - PointBilliard-v2 (Multiple Goals (0.5 pt or 1.0 pt))
 
 ## Warning
-This project has some other environments (e.g., reacher, and swimmer)
+This project has some other environments (e.g., reacher and swimmer)
 but if they are not on README, they are work in progress and
 not tested well.
 

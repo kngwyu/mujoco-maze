@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mujoco-maze"
-version = "0.1.0"
+version = "0.1.1"
 description = "Simple maze environments using mujoco-py"
 license = "Apache-2.0"
 authors = ["Yuji Kanagawa <yuji.kngw.80s.revive@gmail.com>"]
@@ -10,7 +10,7 @@ repository = "https://github.com/kngwyu/mujoco-maze"
 homepage = "https://github.com/kngwyu/mujoco-maze"
 
 [tool.poetry.dependencies]
-python = "^3.6"  # Compatible python versions must be declared here
+python = ">=3.6.1"  # Compatible python versions must be declared here
 gym = ">=0.16"
 mujoco-py = ">=1.5"
 
