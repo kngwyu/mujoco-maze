@@ -1,4 +1,5 @@
 # mujoco-maze
+[![Black](https://img.shields.io/badge/code%20style-black-000.svg)](https://github.com/psf/black)
 
 Some maze environments for reinforcement learning(RL) using [mujoco-py] and
 [openai gym][gym].
@@ -22,19 +23,26 @@ Thankfully, this project is based on the code from  [rllab] and [tensorflow/mode
 
 - PointPush/AntPush
 
-  ![PointPush](./screenshots/PointPush.png)
+  ![PointPush](./screenshots/AntPush.png)
   - PointPush-v0/AntPush-v0 (Distance-based Reward)
   - PointPush-v1/AntPush-v1 (Goal-based Reward)
 
 - PointFall/AntFall
 
-  ![PointFall](./screenshots/PointFall.png)
+  ![PointFall](./screenshots/AntFall.png)
   - PointFall-v0/AntFall-v0 (Distance-based Reward)
   - PointFall-v1/AntFall-v1 (Goal-based Reward)
 
+- PointBilliard
+
+  ![PointBilliard](./screenshots/PointBilliard.png)
+  - PointBilliard-v0 (Distance-based Reward)
+  - PointBilliard-v1 (Goal-based Reward)
+  - PointBilliard-v2 (Multiple Goals (0.5 pt or 1.0 pt))
+
 ## Warning
-This project has some other environments (e.g., billiard, reacher, and
-swimmer) but if they are not on README, they are work in progress and
+This project has some other environments (e.g., reacher, and swimmer)
+but if they are not on README, they are work in progress and
 not tested well.
 
 ## License

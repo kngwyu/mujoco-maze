@@ -14,6 +14,9 @@ class Rgb(NamedTuple):
     green: float
     blue: float
 
+    def rgba_str(self) -> str:
+        return f"{self.red} {self.green} {self.blue} 1"
+
 
 RED = Rgb(0.7, 0.1, 0.1)
 GREEN = Rgb(0.1, 0.7, 0.1)
@@ -37,10 +40,6 @@ class MazeGoal:
         self.threshold = threshold
         self.custom_size = custom_size
 
-    def rbga_str(self) -> str:
-        r, g, b = self.rgb
-        return f"{r} {g} {b} 1"
-
     def neighbor(self, obs: np.ndarray) -> float:
         return np.linalg.norm(obs[: self.dim] - self.pos) <= self.threshold
 
@@ -49,9 +48,9 @@ class MazeGoal:
 
 
 class Scaling(NamedTuple):
-    ant: float
-    point: float
-    swimmer: float
+    ant: Optional[float]
+    point: Optional[float]
+    swimmer: Optional[float]
 
 
 class MazeTask(ABC):
@@ -59,10 +58,14 @@ class MazeTask(ABC):
     PENALTY: Optional[float] = None
     MAZE_SIZE_SCALING: Scaling = Scaling(8.0, 4.0, 4.0)
     INNER_REWARD_SCALING: float = 0.01
-    TOP_DOWN_VIEW: bool = False
+    # For Fall/Push/BlockMaze
     OBSERVE_BLOCKS: bool = False
+    # For Billiard
     OBSERVE_BALLS: bool = False
+    OBJECT_BALL_SIZE: float = 1.0
+    # Unused now
     PUT_SPIN_NEAR_AGENT: bool = False
+    TOP_DOWN_VIEW: bool = False
 
     def __init__(self, scale: float) -> None:
         self.goals = []
@@ -143,7 +146,7 @@ class DistRewardSimpleRoom(GoalRewardSimpleRoom, DistRewardMixIn):
 
 
 class GoalRewardPush(GoalRewardUMaze):
-    TOP_DOWN_VIEW = True
+    OBSERVE_BLOCKS: bool = True
 
     def __init__(self, scale: float) -> None:
         super().__init__(scale)
@@ -166,7 +169,7 @@ class DistRewardPush(GoalRewardPush, DistRewardMixIn):
 
 
 class GoalRewardFall(GoalRewardUMaze):
-    TOP_DOWN_VIEW = True
+    OBSERVE_BLOCKS: bool = True
 
     def __init__(self, scale: float) -> None:
         super().__init__(scale)
@@ -195,9 +198,9 @@ class GoalReward2Rooms(MazeTask):
     PENALTY: float = -0.0001
     MAZE_SIZE_SCALING: Scaling = Scaling(4.0, 4.0, 4.0)
 
-    def __init__(self, scale: float) -> None:
+    def __init__(self, scale: float, goal: Tuple[int, int] = (4.0, -2.0)) -> None:
         super().__init__(scale)
-        self.goals = [MazeGoal(np.array([0.0, 4.0 * scale]))]
+        self.goals = [MazeGoal(np.array(goal) * scale)]
 
     def reward(self, obs: np.ndarray) -> float:
         for goal in self.goals:
@@ -210,10 +213,10 @@ class GoalReward2Rooms(MazeTask):
         E, B, R = MazeCell.EMPTY, MazeCell.BLOCK, MazeCell.ROBOT
         return [
             [B, B, B, B, B, B, B, B],
-            [B, R, E, E, E, E, E, B],
-            [B, E, E, E, E, E, E, B],
-            [B, B, B, B, B, E, B, B],
-            [B, E, E, E, E, E, E, B],
+            [B, E, E, E, B, E, E, B],
+            [B, E, E, E, B, E, E, B],
+            [B, E, R, E, B, E, E, B],
+            [B, E, E, E, B, E, E, B],
             [B, E, E, E, E, E, E, B],
             [B, B, B, B, B, B, B, B],
         ]
@@ -224,9 +227,17 @@ class DistReward2Rooms(GoalReward2Rooms, DistRewardMixIn):
 
 
 class SubGoal2Rooms(GoalReward2Rooms):
-    def __init__(self, scale: float) -> None:
-        super().__init__(scale)
-        self.goals.append(MazeGoal(np.array([5.0 * scale, 0.0 * scale]), 0.5, GREEN))
+    def __init__(
+        self,
+        scale: float,
+        primary_goal: Tuple[float, float] = (4.0, -2.0),
+        subgoals: List[Tuple[float, float]] = [(1.0, -2.0), (-1.0, 2.0)],
+    ) -> None:
+        super().__init__(scale, primary_goal)
+        for subgoal in subgoals:
+            self.goals.append(
+                MazeGoal(np.array(subgoal) * scale, reward_scale=0.5, rgb=GREEN)
+            )
 
 
 class GoalReward4Rooms(MazeTask):
@@ -305,7 +316,21 @@ class DistRewardTRoom(GoalRewardTRoom, DistRewardMixIn):
     pass
 
 
+class SubGoalTRoom(GoalRewardTRoom):
+    def __init__(
+        self,
+        scale: float,
+        primary_goal: Tuple[float, float] = (2.0, -3.0),
+        subgoal: Tuple[float, float] = (-2.0, -3.0),
+    ) -> None:
+        super().__init__(scale, primary_goal)
+        self.goals.append(
+            MazeGoal(np.array(subgoal) * scale, reward_scale=0.5, rgb=GREEN)
+        )
+
+
 class GoalRewardBlockMaze(GoalRewardUMaze):
+    MAZE_SIZE_SCALING: Scaling = Scaling(8.0, 4.0, None)
     OBSERVE_BLOCKS: bool = True
 
     def __init__(self, scale: float) -> None:
@@ -333,36 +358,96 @@ class DistRewardBlockMaze(GoalRewardBlockMaze, DistRewardMixIn):
 class GoalRewardBilliard(MazeTask):
     REWARD_THRESHOLD: float = 0.9
     PENALTY: float = -0.0001
-    MAZE_SIZE_SCALING: Scaling = Scaling(4.0, 3.0, 3.0)
+    MAZE_SIZE_SCALING: Scaling = Scaling(None, 3.0, None)
     OBSERVE_BALLS: bool = True
+    GOAL_SIZE: float = 0.3
 
-    def __init__(self, scale: float, goal: Tuple[float, float] = (1.0, -2.0)) -> None:
+    def __init__(self, scale: float, goal: Tuple[float, float] = (2.0, -3.0)) -> None:
         super().__init__(scale)
         goal = np.array(goal) * scale
-        self.goals = [MazeGoal(goal, threshold=1.25, custom_size=0.25)]
+        self.goals.append(
+            MazeGoal(goal, threshold=self._threshold(), custom_size=self.GOAL_SIZE)
+        )
+
+    def _threshold(self) -> float:
+        return self.OBJECT_BALL_SIZE + self.GOAL_SIZE
 
     def reward(self, obs: np.ndarray) -> float:
-        return 1.0 if self.termination(obs) else self.PENALTY
+        object_pos = obs[3:6]
+        for goal in self.goals:
+            if goal.neighbor(object_pos):
+                return goal.reward_scale
+        return self.PENALTY
 
     def termination(self, obs: np.ndarray) -> bool:
-        return super().termination(obs[3:6])
+        object_pos = obs[3:6]
+        for goal in self.goals:
+            if goal.neighbor(object_pos):
+                return True
+        return False
 
     @staticmethod
     def create_maze() -> List[List[MazeCell]]:
         E, B = MazeCell.EMPTY, MazeCell.BLOCK
         R, M = MazeCell.ROBOT, MazeCell.OBJECT_BALL
         return [
-            [B, B, B, B, B],
-            [B, E, E, E, B],
-            [B, E, M, E, B],
-            [B, E, R, E, B],
-            [B, B, B, B, B],
+            [B, B, B, B, B, B, B],
+            [B, E, E, E, E, E, B],
+            [B, E, E, E, E, E, B],
+            [B, E, E, M, E, E, B],
+            [B, E, E, R, E, E, B],
+            [B, E, E, E, E, E, B],
+            [B, B, B, B, B, B, B],
         ]
 
 
 class DistRewardBilliard(GoalRewardBilliard):
     def reward(self, obs: np.ndarray) -> float:
         return -self.goals[0].euc_dist(obs[3:6]) / self.scale
+
+
+class SubGoalBilliard(GoalRewardBilliard):
+    def __init__(
+        self,
+        scale: float,
+        primary_goal: Tuple[float, float] = (2.0, -3.0),
+        subgoals: List[Tuple[float, float]] = [(-2.0, -3.0), (-2.0, 1.0), (2.0, 1.0)],
+    ) -> None:
+        super().__init__(scale, primary_goal)
+        for subgoal in subgoals:
+            self.goals.append(
+                MazeGoal(
+                    np.array(subgoal) * scale,
+                    reward_scale=0.5,
+                    rgb=GREEN,
+                    threshold=self._threshold(),
+                    custom_size=self.GOAL_SIZE,
+                )
+            )
+
+
+class BanditBilliard(SubGoalBilliard):
+    def __init__(
+        self,
+        scale: float,
+        primary_goal: Tuple[float, float] = (4.0, -2.0),
+        subgoals: List[Tuple[float, float]] = [(4.0, 2.0)],
+    ) -> None:
+        super().__init__(scale, primary_goal, subgoals)
+
+    @staticmethod
+    def create_maze() -> List[List[MazeCell]]:
+        E, B = MazeCell.EMPTY, MazeCell.BLOCK
+        R, M = MazeCell.ROBOT, MazeCell.OBJECT_BALL
+        return [
+            [B, B, B, B, B, B, B],
+            [B, E, E, B, B, E, B],
+            [B, E, E, E, E, E, B],
+            [B, R, M, E, B, B, B],
+            [B, E, E, E, E, E, B],
+            [B, E, E, E, E, E, B],
+            [B, B, B, B, B, B, B],
+        ]
 
 
 class TaskRegistry:
@@ -373,9 +458,14 @@ class TaskRegistry:
         "Fall": [DistRewardFall, GoalRewardFall],
         "2Rooms": [DistReward2Rooms, GoalReward2Rooms, SubGoal2Rooms],
         "4Rooms": [DistReward4Rooms, GoalReward4Rooms, SubGoal4Rooms],
-        "TRoom": [DistRewardTRoom, GoalRewardTRoom],
+        "TRoom": [DistRewardTRoom, GoalRewardTRoom, SubGoalTRoom],
         "BlockMaze": [DistRewardBlockMaze, GoalRewardBlockMaze],
-        "Billiard": [DistRewardBilliard, GoalRewardBilliard],
+        "Billiard": [
+            DistRewardBilliard,
+            GoalRewardBilliard,
+            SubGoalBilliard,
+            BanditBilliard,
+        ],
     }
 
     @staticmethod

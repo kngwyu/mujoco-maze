@@ -36,6 +36,20 @@ def test_point_maze(maze_id):
             assert r < 0.0
 
 
+@pytest.mark.parametrize("maze_id", ["2Rooms", "4Rooms", "Billiard"])
+def test_subgoal_envs(maze_id):
+    env = gym.make(f"Point{maze_id}-v2")
+    s0 = env.reset()
+    s, r, _, _ = env.step(env.action_space.sample())
+    if not env.unwrapped.has_extended_obs:
+        assert s0.shape == (7,)
+        assert s.shape == (7,)
+    elif env.unwrapped._observe_balls:
+        assert s0.shape == (10,)
+        assert s.shape == (10,)
+    assert len(env.unwrapped._task.goals) > 1
+
+
 @pytest.mark.parametrize("maze_id", mujoco_maze.TaskRegistry.keys())
 def test_reacher_maze(maze_id):
     for inhibited in ["Fall", "Push", "Block", "Billiard"]:

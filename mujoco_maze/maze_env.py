@@ -72,8 +72,9 @@ class MazeEnv(gym.Env):
             self._collision = maze_env_utils.CollisionDetector(
                 structure, size_scaling, torso_x, torso_y, model_cls.RADIUS,
             )
+            # Now all object balls have size=1.0
             self._objball_collision = maze_env_utils.CollisionDetector(
-                structure, size_scaling, torso_x, torso_y, 0.8,
+                structure, size_scaling, torso_x, torso_y, self._task.OBJECT_BALL_SIZE,
             )
         else:
             self._collision = None
@@ -145,7 +146,7 @@ class MazeEnv(gym.Env):
                 elif struct.is_object_ball():
                     # Movable Ball
                     self.object_balls.append(f"objball_{i}_{j}")
-                    _add_object_ball(worldbody, i, j, x, y)
+                    _add_object_ball(worldbody, i, j, x, y, self._task.OBJECT_BALL_SIZE)
 
         torso = tree.find(".//body[@name='torso']")
         geoms = torso.findall(".//geom")
@@ -166,7 +167,7 @@ class MazeEnv(gym.Env):
                 name=f"goal_site{i}",
                 pos=f"{goal.pos[0]} {goal.pos[1]} {z}",
                 size=f"{maze_size_scaling * 0.1}",
-                rgba=goal.rbga_str(),
+                rgba=goal.rgb.rgba_str(),
             )
 
         _, file_path = tempfile.mkstemp(text=True, suffix=".xml")
@@ -385,6 +386,7 @@ class MazeEnv(gym.Env):
                     self.wrapped_env.set_xy(old_pos)
                 else:
                     self.wrapped_env.set_xy(pos)
+            # Do the same check for object balls
             for name, old, new in zip(self.object_balls, old_objballs, new_objballs):
                 collision = self._objball_collision.detect(old, new)
                 if collision is not None:
@@ -406,20 +408,23 @@ class MazeEnv(gym.Env):
         self.wrapped_env.close()
 
 
-def _add_object_ball(worldbody: ET.Element, i: str, j: str, x: float, y: float) -> None:
-    body = ET.SubElement(worldbody, "body", name=f"objball_{i}_{j}", pos=f"{x} {y} 0",)
+def _add_object_ball(
+    worldbody: ET.Element, i: str, j: str, x: float, y: float, size: float
+) -> None:
+    body = ET.SubElement(worldbody, "body", name=f"objball_{i}_{j}", pos=f"{x} {y} 0")
+    mass = 0.0001 * (size ** 3)
     ET.SubElement(
         body,
         "geom",
         type="sphere",
         name=f"objball_{i}_{j}_geom",
-        size="1.0",  # Radius
-        pos="0.0 0.0 1.0",  # Z = 1.0 so that this ball can move!!
-        rgba="0.1 0.1 0.7 1",
+        size=f"{size}",  # Radius
+        pos=f"0.0 0.0 {size}",  # Z = size so that this ball can move!!
+        rgba=maze_task.BLUE.rgba_str(),
         contype="1",
         conaffinity="1",
         solimp="0.9 0.99 0.001",
-        mass="0.0001",
+        mass=f"{mass}",
     )
     ET.SubElement(
         body,
