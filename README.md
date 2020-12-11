@@ -6,7 +6,24 @@
 Some maze environments for reinforcement learning(RL) using [mujoco-py] and
 [openai gym][gym].
 
-Thankfully, this project is based on the code from  [rllab] and [tensorflow/models][models].
+Thankfully, this project is based on the code from  [rllab] and
+[tensorflow/models][models].
+
+Note that [d4rl][d4rl] and [dm_control][dm_control] have similar maze
+environment, and you can also check them.
+But if you want more customizable or minimal one, I recommend this.
+
+## Usage
+
+Importing `mujoco_maze` registers environments and environments listed
+below are available via `gym.make`.
+
+E.g.,
+```python
+import gym
+import mujoco_maze  # noqa
+env = gym.make("Ant4Rooms-v0")
+```
 
 ## Environments
 
@@ -42,6 +59,56 @@ Thankfully, this project is based on the code from  [rllab] and [tensorflow/mode
   - PointBilliard-v1 (Goal-based Reward)
   - PointBilliard-v2 (Multiple Goals (0.5 pt or 1.0 pt))
 
+## Customize Environments
+You can define your own task by using components in `maze_task.py`,
+like:
+
+```
+import gym
+import numpy as np
+from mujoco_maze.maze_env_utils import MazeCell
+from mujoco_maze.maze_task import MazeGoal, MazeTask
+from mujoco_maze.point import PointEnv
+
+
+class GoalRewardEMaze(MazeTask):
+    REWARD_THRESHOLD: float = 0.9
+    PENALTY: float = -0.0001
+
+    def __init__(self, scale):
+        super().__init__(scale)
+        self.goals = [MazeGoal(np.array([0.0, 4.0]) * scale)]
+
+    def reward(self, obs):
+        return 1.0 if self.termination(obs) else self.PENALTY
+
+    @staticmethod
+    def create_maze():
+        E, B, R = MazeCell.EMPTY, MazeCell.BLOCK, MazeCell.ROBOT
+        return [
+            [B, B, B, B, B],
+            [B, R, E, E, B],
+            [B, B, B, E, B],
+            [B, E, E, E, B],
+            [B, B, B, E, B],
+            [B, E, E, E, B],
+            [B, B, B, B, B],
+        ]
+
+
+gym.envs.register(
+    id="PointEMaze-v0",
+    entry_point="mujoco_maze.maze_env:MazeEnv",
+    kwargs=dict(
+        model_cls=PointEnv,
+        maze_task=GoalRewardEMaze,
+        maze_size_scaling=GoalRewardEMaze.MAZE_SIZE_SCALING.point,
+        inner_reward_scaling=GoalRewardEMaze.INNER_REWARD_SCALING,
+    )
+)
+```
+You can also customize models. See `point.py` or so.
+
 ## Warning
 This project has some other environments (e.g., reacher and swimmer)
 but if they are not on README, they are work in progress and
@@ -51,6 +118,8 @@ not tested well.
 This project is licensed under Apache License, Version 2.0
 ([LICENSE-APACHE](LICENSE) or http://www.apache.org/licenses/LICENSE-2.0).
 
+[d4rl]: https://github.com/rail-berkeley/d4rl
+[dm_control]: https://github.com/deepmind/dm_control
 [gym]: https://github.com/openai/gym
 [models]: https://github.com/tensorflow/models/tree/master/research/efficient-hrl
 [mujoco-py]: https://github.com/openai/mujoco-py
