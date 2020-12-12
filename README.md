@@ -18,7 +18,7 @@ But if you want more customizable or minimal one, I recommend this.
 Importing `mujoco_maze` registers environments and environments listed
 below are available via `gym.make`.
 
-E.g.,
+E.g.,:
 ```python
 import gym
 import mujoco_maze  # noqa
@@ -63,7 +63,7 @@ env = gym.make("Ant4Rooms-v0")
 You can define your own task by using components in `maze_task.py`,
 like:
 
-```
+```python
 import gym
 import numpy as np
 from mujoco_maze.maze_env_utils import MazeCell
