@@ -30,7 +30,10 @@ setup(
     name=NAME,
     version=VERSION,
     url=URL,
-    project_urls={"Code": URL, "Issue tracker": URL + "/issues",},
+    project_urls={
+        "Code": URL,
+        "Issue tracker": URL + "/issues",
+    },
     author=AUTHOR,
     author_email=EMAIL,
     description=DESCRIPTION,

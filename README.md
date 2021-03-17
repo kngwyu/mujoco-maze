@@ -10,8 +10,8 @@ Thankfully, this project is based on the code from  [rllab] and
 [tensorflow/models][models].
 
 Note that [d4rl][d4rl] and [dm_control][dm_control] have similar maze
-environment, and you can also check them.
-But if you want more customizable or minimal one, I recommend this.
+environments, and you can also check them.
+But, if you want more customizable or minimal one, I recommend this.
 
 ## Usage
 
