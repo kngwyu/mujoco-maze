@@ -3,8 +3,8 @@
 [![PyPI version](https://img.shields.io/pypi/v/mujoco-maze?style=flat-square)](https://pypi.org/project/mujoco-maze/)
 [![Black](https://img.shields.io/badge/code%20style-black-000.svg)](https://github.com/psf/black)
 
-Some maze environments for reinforcement learning(RL) using [mujoco-py] and
-[openai gym][gym].
+Some maze environments for reinforcement learning (RL) based on [mujoco-py]
+and [openai gym][gym].
 
 Thankfully, this project is based on the code from  [rllab] and
 [tensorflow/models][models].
