@@ -329,6 +329,29 @@ class SubGoalTRoom(GoalRewardTRoom):
         )
 
 
+class NoRewardRoom(MazeTask):
+    REWARD_THRESHOLD: float = 0.0
+    MAZE_SIZE_SCALING: Scaling = Scaling(4.0, 4.0, 4.0)
+
+    def reward(self, obs: np.ndarray) -> float:
+        return 0.0
+
+    @staticmethod
+    def create_maze() -> List[List[MazeCell]]:
+        E, B, R = MazeCell.EMPTY, MazeCell.BLOCK, MazeCell.ROBOT
+        return [
+            [B, B, B, B, B, B, B, B, B],
+            [B, E, E, B, E, E, E, E, B],
+            [B, E, E, B, E, E, E, E, B],
+            [B, E, E, E, E, E, B, B, B],
+            [B, E, E, E, R, E, E, E, B],
+            [B, B, B, E, E, E, E, E, B],
+            [B, E, E, E, E, B, E, E, B],
+            [B, E, E, E, E, B, E, E, B],
+            [B, B, B, B, B, B, B, B, B],
+        ]
+
+
 class GoalRewardBlockMaze(GoalRewardUMaze):
     MAZE_SIZE_SCALING: Scaling = Scaling(8.0, 4.0, None)
     OBSERVE_BLOCKS: bool = True
@@ -460,6 +483,7 @@ class TaskRegistry:
         "4Rooms": [DistReward4Rooms, GoalReward4Rooms, SubGoal4Rooms],
         "TRoom": [DistRewardTRoom, GoalRewardTRoom, SubGoalTRoom],
         "BlockMaze": [DistRewardBlockMaze, GoalRewardBlockMaze],
+        "NoRewardRoom": [NoRewardRoom],
         "Billiard": [
             DistRewardBilliard,
             GoalRewardBilliard,
