@@ -22,7 +22,7 @@ class PointEnv(AgentModel):
 
     VELOCITY_LIMITS: float = 10.0
 
-    def __init__(self, file_path: Optional[str] = None):
+    def __init__(self, file_path: Optional[str] = None) -> None:
         super().__init__(file_path, 1)
         high = np.inf * np.ones(6, dtype=np.float32)
         high[3:] = self.VELOCITY_LIMITS * 1.2
