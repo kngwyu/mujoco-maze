@@ -363,15 +363,26 @@ class MazeEnv(gym.Env):
 
     def render(self, mode="human", **kwargs) -> Any:
         if self._use_alt_viewer:
-            image = self.wrapped_env.sim.render(640, 480)[::-1, :, :]
             if self._alt_viewer is None:
-                from mujoco_maze.alt_rendering import ImageViewer
+                from gym.envs.classic_control.rendering import SimpleImageViewer
+                import mujoco_py
 
-                self._alt_viewer = ImageViewer(640, 480)
+                self._mj_viewer = mujoco_py.MjRenderContextOffscreen(
+                    self.wrapped_env.sim
+                )
+                self._alt_viewer = SimpleImageViewer()
+
+            self._mj_viewer._set_mujoco_buffers()
+            self._mj_viewer.render(640, 480)
+            image = np.asarray(
+                self._mj_viewer.read_pixels(640, 480, depth=False)[::-1, :, :],
+                dtype=np.uint8,
+            )
             if mode == "rgb_array":
                 return image
             else:
-                self._alt_viewer.imshow(image)
+                if not (image.min() == 0 and image.max() == 0):
+                    self._alt_viewer.imshow(image)
                 return self._alt_viewer.isopen
         else:
             return self.wrapped_env.render(mode=mode, **kwargs)
