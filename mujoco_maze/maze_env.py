@@ -370,7 +370,6 @@ class MazeEnv(gym.Env):
                 super().__init__()
                 self.pipe = pipe
                 self.port = port
-                self.server = None
 
             def _run_server(self) -> None:
                 import asyncio
@@ -384,6 +383,7 @@ class MazeEnv(gym.Env):
                 app = fastapi.FastAPI()
                 html_path = pathlib.Path(__file__).parent.joinpath("static/index.html")
                 html = html_path.read_text().replace("{{port}}", str(self.port))
+                server = None
 
                 @app.get("/")
                 async def get():
@@ -403,11 +403,11 @@ class MazeEnv(gym.Env):
                             res = stream.getvalue()
                             await websocket.send_bytes(res)
                     await websocket.close()
-                    await self.server.shutdown()
+                    server.should_exit = True
 
                 config = uvicorn.Config(app, port=self.port)
-                self.server = uvicorn.Server(config)
-                self.server.run()
+                server = uvicorn.Server(config)
+                server.run()
 
             def run(self) -> None:
                 try:
