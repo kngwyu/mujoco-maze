@@ -1,12 +1,41 @@
 import asyncio
 import io
 import multiprocessing as mp
-import pathlib
 
 import fastapi
 import uvicorn
 
 from PIL import Image
+
+HTML = """
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>MuJoCo maze visualizer</title>
+  </head>
+  <body>
+    <script>
+      var web_socket = new WebSocket('ws://127.0.0.1:{{port}}/ws');
+      web_socket.binaryType = "arraybuffer";
+      web_socket.onmessage = function(event) {
+          var canvas = document.getElementById('canvas');
+          var ctx = canvas.getContext('2d');
+          var blob = new Blob([event.data], {type:'image/png'});
+          var url = URL.createObjectURL(blob);
+          var image = new Image();
+          image.onload = function() {
+              ctx.drawImage(image, 0, 0);
+          }
+          console.log(url);
+          image.src = url;
+      }
+    </script>
+    <div>
+      <canvas id="canvas" width="600" height="480"></canvas>
+    </div>
+  </body>
+</html>
+"""
 
 
 class _ServerWorker(mp.Process):
@@ -18,9 +47,7 @@ class _ServerWorker(mp.Process):
     def _run_server(self) -> None:
 
         app = fastapi.FastAPI()
-        static = pathlib.Path(__file__).parent.joinpath("static")
-        html_path = static.joinpath("index.html")
-        html = html_path.read_text().replace("{{port}}", str(self.port))
+        html = HTML.replace("{{port}}", str(self.port))
 
         @app.get("/")
         async def get():
