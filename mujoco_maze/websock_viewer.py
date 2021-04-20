@@ -4,7 +4,6 @@ import multiprocessing as mp
 
 import fastapi
 import uvicorn
-
 from PIL import Image
 
 HTML = """

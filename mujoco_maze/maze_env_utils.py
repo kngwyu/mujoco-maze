@@ -83,7 +83,9 @@ class MazeCell(Enum):
 
 class Line:
     def __init__(
-        self, p1: Union[Sequence[float], Point], p2: Union[Sequence[float], Point],
+        self,
+        p1: Union[Sequence[float], Point],
+        p2: Union[Sequence[float], Point],
     ) -> None:
         self.p1 = p1 if isinstance(p1, Point) else np.complex(*p1)
         self.p2 = p2 if isinstance(p2, Point) else np.complex(*p2)
@@ -141,8 +143,7 @@ class Collision:
 
 
 class CollisionDetector:
-    """For manual collision detection.
-    """
+    """For manual collision detection."""
 
     EPS: float = 0.05
     NEIGHBORS: List[Tuple[int, int]] = [[0, -1], [-1, 0], [0, 1], [1, 0]]

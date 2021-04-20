@@ -55,10 +55,14 @@ class SwimmerEnv(AgentModel):
 
     def reset_model(self) -> np.ndarray:
         qpos = self.init_qpos + self.np_random.uniform(
-            low=-0.1, high=0.1, size=self.model.nq,
+            low=-0.1,
+            high=0.1,
+            size=self.model.nq,
         )
         qvel = self.init_qvel + self.np_random.uniform(
-            low=-0.1, high=0.1, size=self.model.nv,
+            low=-0.1,
+            high=0.1,
+            size=self.model.nv,
         )
 
         self.set_state(qpos, qvel)

@@ -27,16 +27,13 @@ class AgentModel(ABC, MujocoEnv, EzPickle):
 
     @abstractmethod
     def _get_obs(self) -> np.ndarray:
-        """Returns the observation from the model.
-        """
+        """Returns the observation from the model."""
         pass
 
     def get_xy(self) -> np.ndarray:
-        """Returns the coordinate of the agent.
-        """
+        """Returns the coordinate of the agent."""
         pass
 
     def set_xy(self, xy: np.ndarray) -> None:
-        """Set the coordinate of the agent.
-        """
+        """Set the coordinate of the agent."""
         pass

@@ -370,17 +370,16 @@ class MazeEnv(gym.Env):
             dtype=np.uint8,
         )
 
-    def render(self, mode="human", **kwargs) -> Any:
-        if self._websock_port is not None:
+    def render(self, mode="human", **kwargs) -> Optional[np.ndarray]:
+        if mode == "human" and self._websock_port is not None:
             if self._mj_offscreen_viewer is None:
-                from mujoco_py import MjRenderContextOffscreen as MjRenderOffscreen
+                from mujoco_py import MjRenderContextOffscreen as MjRCO
 
                 from mujoco_maze.websock_viewer import start_server
 
-                self._mj_offscreen_viewer = MjRenderOffscreen(self.wrapped_env.sim)
+                self._mj_offscreen_viewer = MjRCO(self.wrapped_env.sim)
                 self._websock_server_pipe = start_server(self._websock_port)
             self._websock_server_pipe.send(self._render_image())
-            return True
         else:
             return self.wrapped_env.render(mode, **kwargs)
 
