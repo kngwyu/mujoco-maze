@@ -331,7 +331,7 @@ class SubGoalTRoom(GoalRewardTRoom):
 
 class NoRewardRoom(MazeTask):
     REWARD_THRESHOLD: float = 0.0
-    MAZE_SIZE_SCALING: Scaling = Scaling(4.0, 4.0, 4.0)
+    MAZE_SIZE_SCALING: Scaling = Scaling(4.0, 4.0, 1.0)
 
     def reward(self, obs: np.ndarray) -> float:
         return 0.0

@@ -37,7 +37,6 @@ class SwimmerEnv(AgentModel):
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, dict]:
         xy_pos_before = self.sim.data.qpos[:2].copy()
         self.do_simulation(action, self.frame_skip)
-
         forward_reward = self._forward_reward(xy_pos_before)
         ctrl_cost = self._ctrl_cost_weight * np.sum(np.square(action))
         return (

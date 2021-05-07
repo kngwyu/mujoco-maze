@@ -11,7 +11,7 @@ from gym.utils import EzPickle
 class AgentModel(ABC, MujocoEnv, EzPickle):
     FILE: str
     MANUAL_COLLISION: bool
-    ORI_IND: int
+    ORI_IND: Optional[int] = None
     RADIUS: Optional[float] = None
 
     def __init__(self, file_path: str, frame_skip: int) -> None:
