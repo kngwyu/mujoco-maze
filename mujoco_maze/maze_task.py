@@ -329,7 +329,7 @@ class SubGoalTRoom(GoalRewardTRoom):
         )
 
 
-class NoRewardRoom(MazeTask):
+class NoRewardCorridor(MazeTask):
     REWARD_THRESHOLD: float = 0.0
     MAZE_SIZE_SCALING: Scaling = Scaling(4.0, 4.0, 1.0)
 
@@ -350,6 +350,25 @@ class NoRewardRoom(MazeTask):
             [B, E, E, E, E, B, E, E, B],
             [B, B, B, B, B, B, B, B, B],
         ]
+
+
+class GoalRewardCorridor(NoRewardCorridor):
+    REWARD_THRESHOLD: float = 0.9
+    PENALTY: float = -0.0001
+
+    def __init__(self, scale: float, goal: Tuple[float, float] = (3.0, -3.0)) -> None:
+        super().__init__(scale)
+        self.goals.append(MazeGoal(np.array(goal) * scale))
+
+    def reward(self, obs: np.ndarray) -> float:
+        for goal in self.goals:
+            if goal.neighbor(obs):
+                return goal.reward_scale
+        return self.PENALTY
+
+
+class DistRewardCorridor(GoalRewardCorridor, DistRewardMixIn):
+    pass
 
 
 class GoalRewardBlockMaze(GoalRewardUMaze):
@@ -483,7 +502,7 @@ class TaskRegistry:
         "4Rooms": [DistReward4Rooms, GoalReward4Rooms, SubGoal4Rooms],
         "TRoom": [DistRewardTRoom, GoalRewardTRoom, SubGoalTRoom],
         "BlockMaze": [DistRewardBlockMaze, GoalRewardBlockMaze],
-        "NoRewardRoom": [NoRewardRoom],
+        "Corridor": [DistRewardCorridor, GoalRewardCorridor, NoRewardCorridor],
         "Billiard": [
             DistRewardBilliard,
             GoalRewardBilliard,
