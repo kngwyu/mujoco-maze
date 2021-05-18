@@ -333,7 +333,7 @@ class NoRewardCorridor(MazeTask):
     REWARD_THRESHOLD: float = 0.0
     MAZE_SIZE_SCALING: Scaling = Scaling(4.0, 4.0, 1.0)
 
-    def reward(self, obs: np.ndarray) -> float:
+    def reward(self, _obs: np.ndarray) -> float:
         return 0.0
 
     @staticmethod
@@ -448,6 +448,14 @@ class DistRewardBilliard(GoalRewardBilliard):
         return -self.goals[0].euc_dist(obs[3:6]) / self.scale
 
 
+class NoRewardBilliard(GoalRewardBilliard):
+    def __init__(self, scale: float) -> None:
+        MazeTask.__init__(self, scale)
+
+    def reward(self, _obs: np.ndarray) -> float:
+        return 0.0
+
+
 class SubGoalBilliard(GoalRewardBilliard):
     def __init__(
         self,
@@ -504,10 +512,11 @@ class TaskRegistry:
         "BlockMaze": [DistRewardBlockMaze, GoalRewardBlockMaze],
         "Corridor": [DistRewardCorridor, GoalRewardCorridor, NoRewardCorridor],
         "Billiard": [
-            DistRewardBilliard,
-            GoalRewardBilliard,
-            SubGoalBilliard,
-            BanditBilliard,
+            DistRewardBilliard,  # v0
+            GoalRewardBilliard,  # v1
+            SubGoalBilliard,  # v2
+            BanditBilliard,  # v3
+            NoRewardBilliard,  # v4
         ],
     }
 
