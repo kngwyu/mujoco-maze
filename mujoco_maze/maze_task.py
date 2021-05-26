@@ -168,7 +168,7 @@ class NoRewardSquareRoom(GoalRewardSimpleRoom):
     def __init__(self, scale: float) -> None:
         super().__init__(scale)
 
-    def reward(self) -> float:
+    def reward(self, _obs: np.ndarray) -> float:
         return 0.0
 
 
