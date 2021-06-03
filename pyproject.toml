@@ -10,7 +10,7 @@ repository = "https://github.com/kngwyu/mujoco-maze"
 homepage = "https://github.com/kngwyu/mujoco-maze"
 
 [tool.poetry.dependencies]
-python = ">=3.6.1"  # Compatible python versions must be declared here
+python = ">=3.7"  # Compatible python versions must be declared here
 gym = ">=0.16"
 mujoco-py = ">=1.5"
 
