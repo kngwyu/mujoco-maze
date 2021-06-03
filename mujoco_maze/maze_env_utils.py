@@ -13,7 +13,7 @@ from typing import Any, List, Optional, Sequence, Tuple, Union
 import numpy as np
 
 Self = Any
-Point = np.complex
+Point = complex
 
 
 class MazeCell(Enum):
@@ -87,11 +87,11 @@ class Line:
         p1: Union[Sequence[float], Point],
         p2: Union[Sequence[float], Point],
     ) -> None:
-        self.p1 = p1 if isinstance(p1, Point) else np.complex(*p1)
-        self.p2 = p2 if isinstance(p2, Point) else np.complex(*p2)
+        self.p1 = p1 if isinstance(p1, Point) else complex(*p1)
+        self.p2 = p2 if isinstance(p2, Point) else complex(*p2)
         self.v1 = self.p2 - self.p1
-        self.conj_v1 = np.conjugate(self.v1)
-        self.norm = np.absolute(self.v1)
+        self.conj_v1 = self.v1.conjugate()
+        self.norm = abs(self.v1)
 
     def _intersect(self, other: Self) -> bool:
         v2 = other.p1 - self.p1
@@ -100,15 +100,15 @@ class Line:
 
     def _projection(self, p: Point) -> Point:
         nv1 = -self.v1
-        nv1_norm = np.absolute(nv1) ** 2
-        scale = np.real(np.conjugate(p - self.p1) * nv1) / nv1_norm
+        nv1_norm = abs(nv1) ** 2
+        scale = ((p - self.p1).conjugate() * nv1).real / nv1_norm
         return self.p1 + nv1 * scale
 
     def reflection(self, p: Point) -> Point:
         return p + 2.0 * (self._projection(p) - p)
 
     def distance(self, p: Point) -> float:
-        return np.absolute(p - self._projection(p))
+        return abs(p - self._projection(p))
 
     def intersect(self, other: Self) -> Point:
         if self._intersect(other) and other._intersect(self):
@@ -198,9 +198,9 @@ class CollisionDetector:
         if len(collisions) == 0:
             return None
         col = collisions[0]
-        dist = np.absolute(col._point - move.p1)
+        dist = abs(col._point - move.p1)
         for collision in collisions[1:]:
-            new_dist = np.absolute(collision._point - move.p1)
+            new_dist = abs(collision._point - move.p1)
             if new_dist < dist:
                 col, dist = collision, new_dist
         return col

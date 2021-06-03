@@ -15,7 +15,7 @@ gym = ">=0.16"
 mujoco-py = ">=1.5"
 
 [tool.poetry.dev-dependencies]
-pytest = "^3.0"
+pytest = "^6.2"
 
 [tool.poetry.scripts]
 test = "pytest:main"
