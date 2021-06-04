@@ -1,7 +1,7 @@
 """
 Based on the reacher in `dm_control`_.
 
-.. _gym: https://github.com/openai/gym
+.. _dm_control: https://github.com/deepmind/dm_control
 """
 
 from typing import Tuple
@@ -54,10 +54,14 @@ class ReacherEnv(AgentModel):
 
     def reset_model(self) -> np.ndarray:
         qpos = self.init_qpos + self.np_random.uniform(
-            low=-0.1, high=0.1, size=self.model.nq,
+            low=-0.1,
+            high=0.1,
+            size=self.model.nq,
         )
         qvel = self.init_qvel + self.np_random.uniform(
-            low=-0.1, high=0.1, size=self.model.nv,
+            low=-0.1,
+            high=0.1,
+            size=self.model.nv,
         )
 
         self.set_state(qpos, qvel)

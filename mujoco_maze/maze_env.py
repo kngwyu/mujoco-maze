@@ -10,7 +10,7 @@ import itertools as it
 import os
 import tempfile
 import xml.etree.ElementTree as ET
-from typing import List, Tuple, Type
+from typing import Any, List, Optional, Tuple, Type
 
 import gym
 import numpy as np
@@ -27,25 +27,20 @@ class MazeEnv(gym.Env):
         self,
         model_cls: Type[AgentModel],
         maze_task: Type[maze_task.MazeTask] = maze_task.MazeTask,
-        top_down_view: float = False,
+        include_position: bool = True,
         maze_height: float = 0.5,
         maze_size_scaling: float = 4.0,
         inner_reward_scaling: float = 1.0,
         restitution_coef: float = 0.8,
         task_kwargs: dict = {},
-        *args,
+        websock_port: Optional[int] = None,
         **kwargs,
     ) -> None:
+        self.t = 0  # time steps
         self._task = maze_task(maze_size_scaling, **task_kwargs)
-
-        xml_path = os.path.join(MODEL_DIR, model_cls.FILE)
-        tree = ET.parse(xml_path)
-        worldbody = tree.find(".//worldbody")
-
         self._maze_height = height = maze_height
         self._maze_size_scaling = size_scaling = maze_size_scaling
         self._inner_reward_scaling = inner_reward_scaling
-        self.t = 0  # time steps
         self._observe_blocks = self._task.OBSERVE_BLOCKS
         self._put_spin_near_agent = self._task.PUT_SPIN_NEAR_AGENT
         # Observe other objectives
@@ -70,11 +65,19 @@ class MazeEnv(gym.Env):
             if model_cls.RADIUS is None:
                 raise ValueError("Manual collision needs radius of the model")
             self._collision = maze_env_utils.CollisionDetector(
-                structure, size_scaling, torso_x, torso_y, model_cls.RADIUS,
+                structure,
+                size_scaling,
+                torso_x,
+                torso_y,
+                model_cls.RADIUS,
             )
             # Now all object balls have size=1.0
             self._objball_collision = maze_env_utils.CollisionDetector(
-                structure, size_scaling, torso_x, torso_y, self._task.OBJECT_BALL_SIZE,
+                structure,
+                size_scaling,
+                torso_x,
+                torso_y,
+                self._task.OBJECT_BALL_SIZE,
             )
         else:
             self._collision = None
@@ -85,6 +88,11 @@ class MazeEnv(gym.Env):
         )
         # walls (immovable), chasms (fall), movable blocks
         self._view = np.zeros([5, 5, 3])
+
+        # Let's create MuJoCo XML
+        xml_path = os.path.join(MODEL_DIR, model_cls.FILE)
+        tree = ET.parse(xml_path)
+        worldbody = tree.find(".//worldbody")
 
         height_offset = 0.0
         if self.elevated:
@@ -141,7 +149,15 @@ class MazeEnv(gym.Env):
                     # Movable block.
                     self.movable_blocks.append(f"movable_{i}_{j}")
                     _add_movable_block(
-                        worldbody, struct, i, j, size_scaling, x, y, h, height_offset,
+                        worldbody,
+                        struct,
+                        i,
+                        j,
+                        size_scaling,
+                        x,
+                        y,
+                        h,
+                        height_offset,
                     )
                 elif struct.is_object_ball():
                     # Movable Ball
@@ -173,8 +189,11 @@ class MazeEnv(gym.Env):
         _, file_path = tempfile.mkstemp(text=True, suffix=".xml")
         tree.write(file_path)
         self.world_tree = tree
-        self.wrapped_env = model_cls(*args, file_path=file_path, **kwargs)
+        self.wrapped_env = model_cls(file_path=file_path, **kwargs)
         self.observation_space = self._get_obs_space()
+        self._websock_port = websock_port
+        self._mj_offscreen_viewer = None
+        self._websock_server_pipe = None
 
     @property
     def has_extended_obs(self) -> bool:
@@ -337,11 +356,32 @@ class MazeEnv(gym.Env):
             self.data.site_xpos[idx][: len(goal.pos)] = goal.pos
 
     @property
-    def viewer(self):
-        return self.wrapped_env.viewer
+    def viewer(self) -> Any:
+        if self._websock_port is not None:
+            return self._mj_viewer
+        else:
+            return self.wrapped_env.viewer
 
-    def render(self, *args, **kwargs):
-        return self.wrapped_env.render(*args, **kwargs)
+    def _render_image(self) -> np.ndarray:
+        self._mj_offscreen_viewer._set_mujoco_buffers()
+        self._mj_offscreen_viewer.render(640, 480)
+        return np.asarray(
+            self._mj_offscreen_viewer.read_pixels(640, 480, depth=False)[::-1, :, :],
+            dtype=np.uint8,
+        )
+
+    def render(self, mode="human", **kwargs) -> Optional[np.ndarray]:
+        if mode == "human" and self._websock_port is not None:
+            if self._mj_offscreen_viewer is None:
+                from mujoco_py import MjRenderContextOffscreen as MjRCO
+
+                from mujoco_maze.websock_viewer import start_server
+
+                self._mj_offscreen_viewer = MjRCO(self.wrapped_env.sim)
+                self._websock_server_pipe = start_server(self._websock_port)
+            self._websock_server_pipe.send(self._render_image())
+        else:
+            return self.wrapped_env.render(mode, **kwargs)
 
     @property
     def action_space(self):
@@ -406,6 +446,8 @@ class MazeEnv(gym.Env):
 
     def close(self) -> None:
         self.wrapped_env.close()
+        if self._websock_server_pipe is not None:
+            self._websock_server_pipe.send(None)
 
 
 def _add_object_ball(
@@ -479,7 +521,10 @@ def _add_movable_block(
         shrink = 1.0
     size = size_scaling * 0.5 * shrink
     movable_body = ET.SubElement(
-        worldbody, "body", name=f"movable_{i}_{j}", pos=f"{x} {y} {h}",
+        worldbody,
+        "body",
+        name=f"movable_{i}_{j}",
+        pos=f"{x} {y} {h}",
     )
     ET.SubElement(
         movable_body,

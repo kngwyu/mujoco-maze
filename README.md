@@ -9,14 +9,15 @@ and [openai gym][gym].
 Thankfully, this project is based on the code from  [rllab] and
 [tensorflow/models][models].
 
-Note that [d4rl][d4rl] and [dm_control][dm_control] have similar maze
+Note that [d4rl] and [dm_control] have similar maze
 environments, and you can also check them.
 But, if you want more customizable or minimal one, I recommend this.
 
 ## Usage
 
-Importing `mujoco_maze` registers environments and environments listed
-below are available via `gym.make`.
+Importing `mujoco_maze` registers environments and you can load
+environments by `gym.make`.
+All available environments listed are listed in [Environments] section.
 
 E.g.,:
 ```python
@@ -116,7 +117,7 @@ not tested well.
 
 ## License
 This project is licensed under Apache License, Version 2.0
-([LICENSE-APACHE](LICENSE) or http://www.apache.org/licenses/LICENSE-2.0).
+([LICENSE](LICENSE) or http://www.apache.org/licenses/LICENSE-2.0).
 
 [d4rl]: https://github.com/rail-berkeley/d4rl
 [dm_control]: https://github.com/deepmind/dm_control

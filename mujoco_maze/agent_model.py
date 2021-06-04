@@ -11,7 +11,7 @@ from gym.utils import EzPickle
 class AgentModel(ABC, MujocoEnv, EzPickle):
     FILE: str
     MANUAL_COLLISION: bool
-    ORI_IND: int
+    ORI_IND: Optional[int] = None
     RADIUS: Optional[float] = None
 
     def __init__(self, file_path: str, frame_skip: int) -> None:
@@ -27,16 +27,13 @@ class AgentModel(ABC, MujocoEnv, EzPickle):
 
     @abstractmethod
     def _get_obs(self) -> np.ndarray:
-        """Returns the observation from the model.
-        """
+        """Returns the observation from the model."""
         pass
 
     def get_xy(self) -> np.ndarray:
-        """Returns the coordinate of the agent.
-        """
+        """Returns the coordinate of the agent."""
         pass
 
     def set_xy(self, xy: np.ndarray) -> None:
-        """Set the coordinate of the agent.
-        """
+        """Set the coordinate of the agent."""
         pass

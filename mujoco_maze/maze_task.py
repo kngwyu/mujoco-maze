@@ -145,6 +145,37 @@ class DistRewardSimpleRoom(GoalRewardSimpleRoom, DistRewardMixIn):
     pass
 
 
+class GoalRewardSquareRoom(GoalRewardUMaze):
+    MAZE_SIZE_SCALING: Scaling = Scaling(4.0, 4.0, 2.0)
+
+    def __init__(self, scale: float, goal: Tuple[float, float] = (1.0, 0.0)) -> None:
+        super().__init__(scale)
+        self.goals = [MazeGoal(np.array(goal) * scale)]
+
+    @staticmethod
+    def create_maze() -> List[List[MazeCell]]:
+        E, B, R = MazeCell.EMPTY, MazeCell.BLOCK, MazeCell.ROBOT
+        return [
+            [B, B, B, B, B],
+            [B, E, E, E, B],
+            [B, E, R, E, B],
+            [B, E, E, E, B],
+            [B, B, B, B, B],
+        ]
+
+
+class NoRewardSquareRoom(GoalRewardSimpleRoom):
+    def __init__(self, scale: float) -> None:
+        super().__init__(scale)
+
+    def reward(self, _obs: np.ndarray) -> float:
+        return 0.0
+
+
+class DistRewardSquareRoom(GoalRewardSquareRoom, DistRewardMixIn):
+    pass
+
+
 class GoalRewardPush(GoalRewardUMaze):
     OBSERVE_BLOCKS: bool = True
 
@@ -329,6 +360,48 @@ class SubGoalTRoom(GoalRewardTRoom):
         )
 
 
+class NoRewardCorridor(MazeTask):
+    REWARD_THRESHOLD: float = 0.0
+    MAZE_SIZE_SCALING: Scaling = Scaling(4.0, 4.0, 1.0)
+
+    def reward(self, _obs: np.ndarray) -> float:
+        return 0.0
+
+    @staticmethod
+    def create_maze() -> List[List[MazeCell]]:
+        E, B, R = MazeCell.EMPTY, MazeCell.BLOCK, MazeCell.ROBOT
+        return [
+            [B, B, B, B, B, B, B, B, B],
+            [B, E, E, B, E, E, E, E, B],
+            [B, E, E, B, E, E, E, E, B],
+            [B, E, E, E, E, E, B, B, B],
+            [B, E, E, E, R, E, E, E, B],
+            [B, B, B, E, E, E, E, E, B],
+            [B, E, E, E, E, B, E, E, B],
+            [B, E, E, E, E, B, E, E, B],
+            [B, B, B, B, B, B, B, B, B],
+        ]
+
+
+class GoalRewardCorridor(NoRewardCorridor):
+    REWARD_THRESHOLD: float = 0.9
+    PENALTY: float = -0.0001
+
+    def __init__(self, scale: float, goal: Tuple[float, float] = (3.0, -3.0)) -> None:
+        super().__init__(scale)
+        self.goals.append(MazeGoal(np.array(goal) * scale))
+
+    def reward(self, obs: np.ndarray) -> float:
+        for goal in self.goals:
+            if goal.neighbor(obs):
+                return goal.reward_scale
+        return self.PENALTY
+
+
+class DistRewardCorridor(GoalRewardCorridor, DistRewardMixIn):
+    pass
+
+
 class GoalRewardBlockMaze(GoalRewardUMaze):
     MAZE_SIZE_SCALING: Scaling = Scaling(8.0, 4.0, None)
     OBSERVE_BLOCKS: bool = True
@@ -406,6 +479,14 @@ class DistRewardBilliard(GoalRewardBilliard):
         return -self.goals[0].euc_dist(obs[3:6]) / self.scale
 
 
+class NoRewardBilliard(GoalRewardBilliard):
+    def __init__(self, scale: float) -> None:
+        MazeTask.__init__(self, scale)
+
+    def reward(self, _obs: np.ndarray) -> float:
+        return 0.0
+
+
 class SubGoalBilliard(GoalRewardBilliard):
     def __init__(
         self,
@@ -453,6 +534,7 @@ class BanditBilliard(SubGoalBilliard):
 class TaskRegistry:
     REGISTRY: Dict[str, List[Type[MazeTask]]] = {
         "SimpleRoom": [DistRewardSimpleRoom, GoalRewardSimpleRoom],
+        "SquareRoom": [DistRewardSquareRoom, GoalRewardSquareRoom, NoRewardSquareRoom],
         "UMaze": [DistRewardUMaze, GoalRewardUMaze],
         "Push": [DistRewardPush, GoalRewardPush],
         "Fall": [DistRewardFall, GoalRewardFall],
@@ -460,11 +542,13 @@ class TaskRegistry:
         "4Rooms": [DistReward4Rooms, GoalReward4Rooms, SubGoal4Rooms],
         "TRoom": [DistRewardTRoom, GoalRewardTRoom, SubGoalTRoom],
         "BlockMaze": [DistRewardBlockMaze, GoalRewardBlockMaze],
+        "Corridor": [DistRewardCorridor, GoalRewardCorridor, NoRewardCorridor],
         "Billiard": [
-            DistRewardBilliard,
-            GoalRewardBilliard,
-            SubGoalBilliard,
-            BanditBilliard,
+            DistRewardBilliard,  # v0
+            GoalRewardBilliard,  # v1
+            SubGoalBilliard,  # v2
+            BanditBilliard,  # v3
+            NoRewardBilliard,  # v4
         ],
     }
 

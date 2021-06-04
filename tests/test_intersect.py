@@ -13,7 +13,7 @@ from mujoco_maze.maze_env_utils import Line
 )
 def test_distance(l1, l2, p, ans):
     line = Line(l1, l2)
-    point = np.complex(*p)
+    point = complex(*p)
     assert abs(line.distance(point) - ans) <= 1e-8
 
 
