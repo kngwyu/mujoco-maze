@@ -28,18 +28,32 @@ env = gym.make("Ant4Rooms-v0")
 
 ## Environments
 
-- PointUMaze/AntUmaze
+- PointUMaze/AntUmaze/SwimmerUmaze
 
   ![PointUMaze](./screenshots/PointUMaze.png)
-  - PointUMaze-v0/AntUMaze-v0 (Distance-based Reward)
-  - PointUmaze-v1/AntUMaze-v1 (Goal-based Reward i.e., 1.0 or -ε)
+  - PointUMaze-v0/AntUMaze-v0/SwimmerUMaze-v0 (Distance-based Reward)
+  - PointUmaze-v1/AntUMaze-v1/SwimmerUMaze-v (Goal-based Reward i.e., 1.0 or -ε)
 
-- Point4Rooms/Ant4Rooms
+- PointSquareRoom/AntSquareRoom/SwimmerSquareRoom
+
+  ![SwimmerSquareRoom](./screenshots/SwimmerSquareRoom.png)
+  - PointSquareRoom-v0/AntSquareRoom-v0/SwimmerSquareRoom-v0 (Distance-based Reward)
+  - PointSquareRoom-v1/AntSquareRoom-v1/SwimmerSquareRoom-v1 (Goal-based Reward)
+  - PointSquareRoom-v2/AntSquareRoom-v2/SwimmerSquareRoom-v2 (No Reward)
+
+- Point4Rooms/Ant4Rooms/Swimmer4Rooms
 
   ![Point4Rooms](./screenshots/Point4Rooms.png)
-  - Point4Rooms-v0/Ant4Rooms-v0 (Distance-based Reward)
-  - Point4Rooms-v1/Ant4Rooms-v1 (Goal-based Reward)
-  - Point4Rooms-v2/Ant4Rooms-v2 (Multiple Goals (0.5 pt or 1.0 pt))
+  - Point4Rooms-v0/Ant4Rooms-v0/Swimmer4Rooms-v0 (Distance-based Reward)
+  - Point4Rooms-v1/Ant4Rooms-v1/Swimmer4Rooms-v1 (Goal-based Reward)
+  - Point4Rooms-v2/Ant4Rooms-v2/Swimmer4Rooms-v2 (Multiple Goals (0.5 pt or 1.0 pt))
+
+- PointCorridor/AntCorridor/SwimmerCorridor
+
+  ![PointCorridor](./screenshots/PointCorridor.png)
+  - PointCorridor-v0/AntCorridor-v0/SwimmerCorridor-v0 (Distance-based Reward)
+  - PointCorridor-v1/AntCorridor-v1/SwimmerCorridor-v1 (Goal-based Reward)
+  - PointCorridor-v2/AntCorridor-v2/SwimmerCorridor-v2 (No Reward)
 
 - PointPush/AntPush
 
@@ -59,6 +73,8 @@ env = gym.make("Ant4Rooms-v0")
   - PointBilliard-v0 (Distance-based Reward)
   - PointBilliard-v1 (Goal-based Reward)
   - PointBilliard-v2 (Multiple Goals (0.5 pt or 1.0 pt))
+  - PointBilliard-v3 (Two goals (0.5 pt or 1.0 pt))
+  - PointBilliard-v4 (No Reward)
 
 ## Customize Environments
 You can define your own task by using components in `maze_task.py`,
@@ -111,9 +127,14 @@ gym.envs.register(
 You can also customize models. See `point.py` or so.
 
 ## Warning
-This project has some other environments (e.g., reacher and swimmer)
-but if they are not on README, they are work in progress and
-not tested well.
+Reacher enviroments are not tested.
+
+## [Experimental] Web-based visualizer
+By passing a port like `gym.make("PointEMaze-v0", websock_port=7777)`,
+one can use a web-based visualizer when calling `env.render()`.
+![WebBasedVis](./screenshots/WebVis.png)
+
+This feature is experimental and can produce some zombie proceses.
 
 ## License
 This project is licensed under Apache License, Version 2.0
