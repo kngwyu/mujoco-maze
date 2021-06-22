@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mujoco-maze"
-version = "0.1.1"
+version = "0.2.0"
 description = "Simple maze environments using mujoco-py"
 license = "Apache-2.0"
 authors = ["Yuji Kanagawa <yuji.kngw.80s.revive@gmail.com>"]
