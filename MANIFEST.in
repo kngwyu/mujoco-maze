@@ -1,2 +1,1 @@
-include mujoco-maze/static/favicon.ico
-include mujoco-maze/templates/index.html
+include mujoco_maze/assets/*
