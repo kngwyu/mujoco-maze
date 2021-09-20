@@ -30,15 +30,6 @@ HTML = """
           console.log(url);
           image.src = url;
       }
-      function saveVideo() {
-          var xhr = new XMLHttpRequest();
-          xhr.open('GET', 'https://via.placeholder.com/150', true);
-          xhr.responseType = 'blob';
-          xhr.onerror = err => {
-              alert('Video is not ready');
-          };
-          xhr.send();
-       }
     </script>
     <div>
       <canvas id="canvas" width="600" height="480"></canvas>
