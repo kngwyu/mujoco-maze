@@ -402,6 +402,30 @@ class DistRewardCorridor(GoalRewardCorridor, DistRewardMixIn):
     pass
 
 
+class GoalRewardLongCorridor(GoalRewardUMaze):
+    MAZE_SIZE_SCALING: Scaling = Scaling(2.0, 4.0, 2.0)
+
+    def __init__(self, scale: float, goal: Tuple[float, float] = (1.0, 3.0)) -> None:
+        super().__init__(scale)
+        self.goals = [MazeGoal(np.array(goal) * scale)]
+
+    @staticmethod
+    def create_maze() -> List[List[MazeCell]]:
+        E, B, R = MazeCell.EMPTY, MazeCell.BLOCK, MazeCell.ROBOT
+        return [
+            [B, B, B, B, B, B, B, B, B],
+            [B, R, B, E, E, E, B, E, B],
+            [B, E, B, E, B, E, B, E, B],
+            [B, E, B, E, B, E, B, E, B],
+            [B, E, E, E, B, E, E, E, B],
+            [B, B, B, B, B, B, B, B, B],
+        ]
+
+
+class DistRewardLongCorridor(GoalRewardLongCorridor, DistRewardMixIn):
+    pass
+
+
 class GoalRewardBlockMaze(GoalRewardUMaze):
     MAZE_SIZE_SCALING: Scaling = Scaling(8.0, 4.0, None)
     OBSERVE_BLOCKS: bool = True
@@ -543,6 +567,7 @@ class TaskRegistry:
         "TRoom": [DistRewardTRoom, GoalRewardTRoom, SubGoalTRoom],
         "BlockMaze": [DistRewardBlockMaze, GoalRewardBlockMaze],
         "Corridor": [DistRewardCorridor, GoalRewardCorridor, NoRewardCorridor],
+        "LongCorridor": [DistRewardLongCorridor, GoalRewardLongCorridor],
         "Billiard": [
             DistRewardBilliard,  # v0
             GoalRewardBilliard,  # v1
