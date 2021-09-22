@@ -146,7 +146,7 @@ class DistRewardSimpleRoom(GoalRewardSimpleRoom, DistRewardMixIn):
 
 
 class GoalRewardSquareRoom(GoalRewardUMaze):
-    MAZE_SIZE_SCALING: Scaling = Scaling(4.0, 4.0, 2.0)
+    MAZE_SIZE_SCALING: Scaling = Scaling(2.0, 4.0, 2.0)
 
     def __init__(self, scale: float, goal: Tuple[float, float] = (1.0, 0.0)) -> None:
         super().__init__(scale)
@@ -164,7 +164,7 @@ class GoalRewardSquareRoom(GoalRewardUMaze):
         ]
 
 
-class NoRewardSquareRoom(GoalRewardSimpleRoom):
+class NoRewardSquareRoom(GoalRewardSquareRoom):
     def __init__(self, scale: float) -> None:
         super().__init__(scale)
 
