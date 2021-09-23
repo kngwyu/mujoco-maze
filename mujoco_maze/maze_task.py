@@ -555,6 +555,26 @@ class BanditBilliard(SubGoalBilliard):
         ]
 
 
+class GoalRewardBilliardCorridor(GoalRewardBilliard):
+    @staticmethod
+    def create_maze() -> List[List[MazeCell]]:
+        E, B = MazeCell.EMPTY, MazeCell.BLOCK
+        R, M = MazeCell.ROBOT, MazeCell.OBJECT_BALL
+        return [
+            [B, B, B, B, B, B, B, B, B],
+            [B, E, E, E, B, E, E, E, B],
+            [B, E, E, E, B, E, E, E, B],
+            [B, E, E, E, B, E, E, E, B],
+            [B, E, E, E, E, E, E, E, B],
+            [B, B, B, B, B, B, B, B, B],
+        ]
+
+
+class DistRewardBilliardCorridor(GoalRewardBilliardCorridor):
+    def reward(self, obs: np.ndarray) -> float:
+        return DistRewardBilliard.reward(self, obs)
+
+
 class TaskRegistry:
     REGISTRY: Dict[str, List[Type[MazeTask]]] = {
         "SimpleRoom": [DistRewardSimpleRoom, GoalRewardSimpleRoom],
@@ -575,6 +595,7 @@ class TaskRegistry:
             BanditBilliard,  # v3
             NoRewardBilliard,  # v4
         ],
+        "BilliardCorridor": [GoalRewardBilliardCorridor, DistRewardBilliardCorridor],
     }
 
     @staticmethod
