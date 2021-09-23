@@ -56,7 +56,7 @@ class Scaling(NamedTuple):
 class MazeTask(ABC):
     REWARD_THRESHOLD: float
     PENALTY: Optional[float] = None
-    MAZE_SIZE_SCALING: Scaling = Scaling(8.0, 4.0, 4.0)
+    MAZE_SIZE_SCALING: Scaling = Scaling(ant=8.0, point=4.0, swimmer=4.0)
     INNER_REWARD_SCALING: float = 0.01
     # For Fall/Push/BlockMaze
     OBSERVE_BLOCKS: bool = False
@@ -146,7 +146,7 @@ class DistRewardSimpleRoom(GoalRewardSimpleRoom, DistRewardMixIn):
 
 
 class GoalRewardSquareRoom(GoalRewardUMaze):
-    MAZE_SIZE_SCALING: Scaling = Scaling(2.0, 4.0, 2.0)
+    MAZE_SIZE_SCALING: Scaling = Scaling(ant=2.0, point=4.0, swimmer=2.0)
 
     def __init__(self, scale: float, goal: Tuple[float, float] = (1.0, 0.0)) -> None:
         super().__init__(scale)
@@ -227,7 +227,7 @@ class DistRewardFall(GoalRewardFall, DistRewardMixIn):
 class GoalReward2Rooms(MazeTask):
     REWARD_THRESHOLD: float = 0.9
     PENALTY: float = -0.0001
-    MAZE_SIZE_SCALING: Scaling = Scaling(4.0, 4.0, 4.0)
+    MAZE_SIZE_SCALING: Scaling = Scaling(ant=4.0, point=4.0, swimmer=4.0)
 
     def __init__(self, scale: float, goal: Tuple[int, int] = (4.0, -2.0)) -> None:
         super().__init__(scale)
@@ -274,7 +274,7 @@ class SubGoal2Rooms(GoalReward2Rooms):
 class GoalReward4Rooms(MazeTask):
     REWARD_THRESHOLD: float = 0.9
     PENALTY: float = -0.0001
-    MAZE_SIZE_SCALING: Scaling = Scaling(4.0, 4.0, 4.0)
+    MAZE_SIZE_SCALING: Scaling = Scaling(ant=4.0, point=4.0, swimmer=4.0)
 
     def __init__(self, scale: float) -> None:
         super().__init__(scale)
@@ -318,7 +318,7 @@ class SubGoal4Rooms(GoalReward4Rooms):
 class GoalRewardTRoom(MazeTask):
     REWARD_THRESHOLD: float = 0.9
     PENALTY: float = -0.0001
-    MAZE_SIZE_SCALING: Scaling = Scaling(4.0, 4.0, 4.0)
+    MAZE_SIZE_SCALING: Scaling = Scaling(ant=4.0, point=4.0, swimmer=4.0)
 
     def __init__(self, scale: float, goal: Tuple[float, float] = (2.0, -3.0)) -> None:
         super().__init__(scale)
@@ -362,7 +362,7 @@ class SubGoalTRoom(GoalRewardTRoom):
 
 class NoRewardCorridor(MazeTask):
     REWARD_THRESHOLD: float = 0.0
-    MAZE_SIZE_SCALING: Scaling = Scaling(4.0, 4.0, 1.0)
+    MAZE_SIZE_SCALING: Scaling = Scaling(ant=4.0, point=4.0, swimmer=1.0)
 
     def reward(self, _obs: np.ndarray) -> float:
         return 0.0
@@ -403,7 +403,7 @@ class DistRewardCorridor(GoalRewardCorridor, DistRewardMixIn):
 
 
 class GoalRewardLongCorridor(GoalRewardUMaze):
-    MAZE_SIZE_SCALING: Scaling = Scaling(2.0, 4.0, 2.0)
+    MAZE_SIZE_SCALING: Scaling = Scaling(ant=2.0, point=4.0, swimmer=2.0)
 
     def __init__(self, scale: float, goal: Tuple[float, float] = (1.0, 3.0)) -> None:
         super().__init__(scale)
@@ -427,7 +427,7 @@ class DistRewardLongCorridor(GoalRewardLongCorridor, DistRewardMixIn):
 
 
 class GoalRewardBlockMaze(GoalRewardUMaze):
-    MAZE_SIZE_SCALING: Scaling = Scaling(8.0, 4.0, None)
+    MAZE_SIZE_SCALING: Scaling = Scaling(ant=8.0, point=4.0, swimmer=None)
     OBSERVE_BLOCKS: bool = True
 
     def __init__(self, scale: float) -> None:
@@ -455,7 +455,7 @@ class DistRewardBlockMaze(GoalRewardBlockMaze, DistRewardMixIn):
 class GoalRewardBilliard(MazeTask):
     REWARD_THRESHOLD: float = 0.9
     PENALTY: float = -0.0001
-    MAZE_SIZE_SCALING: Scaling = Scaling(None, 3.0, None)
+    MAZE_SIZE_SCALING: Scaling = Scaling(ant=None, point=3.0, swimmer=None)
     OBSERVE_BALLS: bool = True
     GOAL_SIZE: float = 0.3
 
