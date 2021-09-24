@@ -181,7 +181,7 @@ class GoalRewardPush(GoalRewardUMaze):
 
     def __init__(self, scale: float) -> None:
         super().__init__(scale)
-        self.goals = [MazeGoal(np.array([0.0, 2.375 * scale]))]
+        self.goals = [MazeGoal(np.array([0.0, 2.375]) * scale)]
 
     @staticmethod
     def create_maze() -> List[List[MazeCell]]:
@@ -199,12 +199,38 @@ class DistRewardPush(GoalRewardPush, DistRewardMixIn):
     pass
 
 
+class GoalRewardMultiPush(GoalRewardUMaze):
+    OBSERVE_BLOCKS: bool = True
+    MAZE_SIZE_SCALING: Scaling = Scaling(ant=3.0, point=4.0, swimmer=None)
+
+    def __init__(self, scale: float, goal: Tuple[float, float] = (1.0, -2)) -> None:
+        super().__init__(scale)
+        self.goals = [MazeGoal(np.array(goal) * scale)]
+
+    @staticmethod
+    def create_maze() -> List[List[MazeCell]]:
+        E, B, R, M = MazeCell.EMPTY, MazeCell.BLOCK, MazeCell.ROBOT, MazeCell.XY_BLOCK
+        return [
+            [B, B, B, B, B],
+            [B, B, E, B, B],
+            [B, E, M, E, B],
+            [B, R, E, B, B],
+            [B, E, M, E, B],
+            [B, B, E, B, B],
+            [B, B, B, B, B],
+        ]
+
+
+class DistRewardMultiPush(GoalRewardMultiPush, DistRewardMixIn):
+    pass
+
+
 class GoalRewardFall(GoalRewardUMaze):
     OBSERVE_BLOCKS: bool = True
 
     def __init__(self, scale: float) -> None:
         super().__init__(scale)
-        self.goals = [MazeGoal(np.array([0.0, 3.375 * scale, 4.5]))]
+        self.goals = [MazeGoal(np.array([0.0, 3.375, 4.5]) * scale)]
 
     @staticmethod
     def create_maze() -> List[List[MazeCell]]:
@@ -561,6 +587,7 @@ class TaskRegistry:
         "SquareRoom": [DistRewardSquareRoom, GoalRewardSquareRoom, NoRewardSquareRoom],
         "UMaze": [DistRewardUMaze, GoalRewardUMaze],
         "Push": [DistRewardPush, GoalRewardPush],
+        "MultiPush": [DistRewardMultiPush, GoalRewardMultiPush],
         "Fall": [DistRewardFall, GoalRewardFall],
         "2Rooms": [DistReward2Rooms, GoalReward2Rooms, SubGoal2Rooms],
         "4Rooms": [DistReward4Rooms, GoalReward4Rooms, SubGoal4Rooms],

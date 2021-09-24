@@ -451,7 +451,12 @@ class MazeEnv(gym.Env):
 
 
 def _add_object_ball(
-    worldbody: ET.Element, i: str, j: str, x: float, y: float, size: float
+    worldbody: ET.Element,
+    i: str,
+    j: str,
+    x: float,
+    y: float,
+    size: float,
 ) -> None:
     body = ET.SubElement(worldbody, "body", name=f"objball_{i}_{j}", pos=f"{x} {y} 0")
     mass = 0.0001 * (size ** 3)
