@@ -201,7 +201,7 @@ class DistRewardPush(GoalRewardPush, DistRewardMixIn):
 
 class GoalRewardMultiPush(GoalRewardUMaze):
     OBSERVE_BLOCKS: bool = True
-    MAZE_SIZE_SCALING: Scaling = Scaling(ant=3.0, point=4.0, swimmer=None)
+    MAZE_SIZE_SCALING: Scaling = Scaling(ant=2.0, point=4.0, swimmer=None)
 
     def __init__(self, scale: float, goal: Tuple[float, float] = (1.0, -2)) -> None:
         super().__init__(scale)
