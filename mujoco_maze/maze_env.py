@@ -34,6 +34,10 @@ class MazeEnv(gym.Env):
         restitution_coef: float = 0.8,
         task_kwargs: dict = {},
         websock_port: Optional[int] = None,
+        camera_move_x: Optional[float] = None,
+        camera_move_y: Optional[float] = None,
+        camera_zoom: Optional[float] = None,
+        image_shape: Tuple[int, int] = (600, 480),
         **kwargs,
     ) -> None:
         self.t = 0  # time steps
@@ -192,6 +196,10 @@ class MazeEnv(gym.Env):
         self.wrapped_env = model_cls(file_path=file_path, **kwargs)
         self.observation_space = self._get_obs_space()
         self._websock_port = websock_port
+        self._camera_move_x = camera_move_x
+        self._camera_move_y = camera_move_y
+        self._camera_zoom = camera_zoom
+        self._image_shape = image_shape
         self._mj_offscreen_viewer = None
         self._websock_server_pipe = None
 
@@ -355,32 +363,36 @@ class MazeEnv(gym.Env):
             idx = self.model.site_name2id(f"goal{i}")
             self.data.site_xpos[idx][: len(goal.pos)] = goal.pos
 
-    @property
-    def viewer(self) -> Any:
-        if self._websock_port is not None:
-            return self._mj_viewer
-        else:
-            return self.wrapped_env.viewer
-
     def _render_image(self) -> np.ndarray:
         self._mj_offscreen_viewer._set_mujoco_buffers()
-        self._mj_offscreen_viewer.render(640, 480)
-        return np.asarray(
-            self._mj_offscreen_viewer.read_pixels(640, 480, depth=False)[::-1, :, :],
-            dtype=np.uint8,
-        )
+        self._mj_offscreen_viewer.render(*self._image_shape)
+        pixels = self._mj_offscreen_viewer.read_pixels(*self._image_shape, depth=False)
+        return np.asarray(pixels[::-1, :, :], dtype=np.uint8)
+
+    def _maybe_move_camera(self, viewer: Any) -> None:
+        from mujoco_py import const
+
+        if self._camera_move_x is not None:
+            viewer.move_camera(const.MOUSE_ROTATE_V, self._camera_move_x, 0.0)
+        if self._camera_move_y is not None:
+            viewer.move_camera(const.MOUSE_ROTATE_H, 0.0, self._camera_move_y)
+        if self._camera_zoom is not None:
+            viewer.move_camera(const.MOUSE_ZOOM, 0, self._camera_zoom)
 
     def render(self, mode="human", **kwargs) -> Optional[np.ndarray]:
         if mode == "human" and self._websock_port is not None:
             if self._mj_offscreen_viewer is None:
                 from mujoco_py import MjRenderContextOffscreen as MjRCO
-
                 from mujoco_maze.websock_viewer import start_server
 
                 self._mj_offscreen_viewer = MjRCO(self.wrapped_env.sim)
+                self._maybe_move_camera(self._mj_offscreen_viewer)
                 self._websock_server_pipe = start_server(self._websock_port)
-            self._websock_server_pipe.send(self._render_image())
+            return self._websock_server_pipe.send(self._render_image())
         else:
+            if self.wrapped_env.viewer is None:
+                self.wrapped_env.render(mode, **kwargs)
+                self._maybe_move_camera(self.wrapped_env.viewer)
             return self.wrapped_env.render(mode, **kwargs)
 
     @property

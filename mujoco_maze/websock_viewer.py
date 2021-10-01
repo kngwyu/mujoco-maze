@@ -32,7 +32,7 @@ HTML = """
       }
     </script>
     <div>
-      <canvas id="canvas" width="600" height="480"></canvas>
+      <canvas id="canvas" width="1200" height="800"></canvas>
     </div>
     <a href="video">Video</a>
   </body>
