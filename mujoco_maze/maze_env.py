@@ -75,7 +75,6 @@ class MazeEnv(gym.Env):
                 torso_y,
                 model_cls.RADIUS,
             )
-            # Now all object balls have size=1.0
             self._objball_collision = maze_env_utils.CollisionDetector(
                 structure,
                 size_scaling,
@@ -490,7 +489,8 @@ def _add_object_ball(
         "joint",
         name=f"objball_{i}_{j}_x",
         axis="1 0 0",
-        pos="0 0 0.0",
+        pos="0 0 0",
+        range="-1 1",
         type="slide",
     )
     ET.SubElement(
@@ -499,6 +499,7 @@ def _add_object_ball(
         name=f"objball_{i}_{j}_y",
         axis="0 1 0",
         pos="0 0 0",
+        range="-1 1",
         type="slide",
     )
     ET.SubElement(

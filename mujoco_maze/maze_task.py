@@ -256,7 +256,7 @@ class DistRewardFall(GoalRewardFall, DistRewardMixIn):
 
 
 class GoalRewardMultiFall(GoalRewardUMaze):
-    MAZE_SIZE_SCALING: Scaling = Scaling(ant=2.0, point=6.0, swimmer=None)
+    MAZE_SIZE_SCALING: Scaling = Scaling(ant=2.0, point=None, swimmer=None)
     OBSERVE_BLOCKS: bool = True
 
     def __init__(self, scale: float, goal: Tuple[int, int] = (0.0, 4.0)) -> None:
@@ -674,6 +674,36 @@ class BanditBilliard(SubGoalBilliard):
         ]
 
 
+class GoalRewardSmallBilliard(GoalRewardBilliard):
+    MAZE_SIZE_SCALING: Scaling = Scaling(ant=1.5, point=4.0, swimmer=None)
+    OBJECT_BALL_SIZE: float = 0.5
+
+    def __init__(self, scale: float, goal: Tuple[float, float] = (-21.0, -2.0)) -> None:
+        super().__init__(scale, goal)
+
+    @staticmethod
+    def create_maze() -> List[List[MazeCell]]:
+        E, B = MazeCell.EMPTY, MazeCell.BLOCK
+        R, M = MazeCell.ROBOT, MazeCell.OBJECT_BALL
+        return [
+            [B, B, B, B, B],
+            [B, E, E, E, B],
+            [B, E, M, E, B],
+            [B, E, R, E, B],
+            [B, E, E, E, B],
+            [B, B, B, B, B],
+        ]
+
+
+class DistRewardSmallBilliard(GoalRewardSmallBilliard, DistRewardMixIn):
+    pass
+
+
+class NoRewardSmallBilliard(GoalRewardSmallBilliard):
+    def reward(self, _obs: np.ndarray) -> float:
+        return 0.0
+
+
 class TaskRegistry:
     REGISTRY: Dict[str, List[Type[MazeTask]]] = {
         "SimpleRoom": [DistRewardSimpleRoom, GoalRewardSimpleRoom],
@@ -696,6 +726,11 @@ class TaskRegistry:
             SubGoalBilliard,  # v2
             BanditBilliard,  # v3
             NoRewardBilliard,  # v4
+        ],
+        "SmallBilliard": [
+            DistRewardSmallBilliard,
+            GoalRewardSmallBilliard,
+            NoRewardSmallBilliard,
         ],
     }
 
