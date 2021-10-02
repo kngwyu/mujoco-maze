@@ -211,13 +211,13 @@ class GoalRewardMultiPush(GoalRewardUMaze):
     def create_maze() -> List[List[MazeCell]]:
         E, B, R, M = MazeCell.EMPTY, MazeCell.BLOCK, MazeCell.ROBOT, MazeCell.XY_BLOCK
         return [
-            [B, B, B, B, B],
-            [B, B, E, B, B],
-            [B, E, M, E, B],
-            [B, R, E, B, B],
-            [B, E, M, E, B],
-            [B, B, E, B, B],
-            [B, B, B, B, B],
+            [B, B, B, B, B, B],
+            [B, B, B, E, B, B],
+            [B, E, E, M, E, B],
+            [B, E, R, E, B, B],
+            [B, E, E, M, E, B],
+            [B, B, B, E, B, B],
+            [B, B, B, B, B, B],
         ]
 
 
@@ -259,22 +259,21 @@ class GoalRewardMultiFall(GoalRewardUMaze):
     MAZE_SIZE_SCALING: Scaling = Scaling(ant=2.0, point=None, swimmer=None)
     OBSERVE_BLOCKS: bool = True
 
-    def __init__(self, scale: float, goal: Tuple[int, int] = (0.0, 4.0)) -> None:
+    def __init__(self, scale: float, goal: Tuple[int, int] = (3.0, 1.0)) -> None:
         super().__init__(scale)
         self.goals = [MazeGoal(np.array([*goal, 0.5]) * scale)]
 
     @staticmethod
     def create_maze() -> List[List[MazeCell]]:
         E, B, C, R = MazeCell.EMPTY, MazeCell.BLOCK, MazeCell.CHASM, MazeCell.ROBOT
-        M = MazeCell.YZ_BLOCK
+        M = MazeCell.XYZ_BLOCK
         return [
-            [B, B, B, B, B, B, B, B, B],
-            [B, E, C, E, R, E, C, E, B],
-            [B, E, C, E, M, E, C, E, B],
-            [B, E, C, E, E, E, C, E, B],
-            [B, B, B, C, C, C, B, B, B],
-            [B, B, B, E, E, E, B, B, B],
-            [B, B, B, B, B, B, B, B, B],
+            [B, B, B, B, B, B],
+            [B, R, E, C, E, B],
+            [B, E, M, C, E, B],
+            [B, C, C, B, B, B],
+            [B, E, E, B, B, B],
+            [B, B, B, B, B, B],
         ]
 
 
@@ -553,9 +552,7 @@ class GoalRewardBlockCarry(MazeTask):
         return [
             [B, B, B, B, B],
             [B, E, E, E, B],
-            [B, E, E, E, B],
             [B, R, M, E, B],
-            [B, E, E, E, B],
             [B, E, E, E, B],
             [B, B, B, B, B],
         ]
@@ -678,7 +675,7 @@ class GoalRewardSmallBilliard(GoalRewardBilliard):
     MAZE_SIZE_SCALING: Scaling = Scaling(ant=1.5, point=4.0, swimmer=None)
     OBJECT_BALL_SIZE: float = 0.5
 
-    def __init__(self, scale: float, goal: Tuple[float, float] = (-21.0, -2.0)) -> None:
+    def __init__(self, scale: float, goal: Tuple[float, float] = (-1.0, -2.0)) -> None:
         super().__init__(scale, goal)
 
     @staticmethod
@@ -690,7 +687,6 @@ class GoalRewardSmallBilliard(GoalRewardBilliard):
             [B, E, E, E, B],
             [B, E, M, E, B],
             [B, E, R, E, B],
-            [B, E, E, E, B],
             [B, B, B, B, B],
         ]
 
