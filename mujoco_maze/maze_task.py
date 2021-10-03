@@ -258,6 +258,7 @@ class DistRewardFall(GoalRewardFall, DistRewardMixIn):
 class GoalRewardMultiFall(GoalRewardUMaze):
     MAZE_SIZE_SCALING: Scaling = Scaling(ant=2.0, point=None, swimmer=None)
     OBSERVE_BLOCKS: bool = True
+    PENALTY: float = -0.0001
 
     def __init__(self, scale: float, goal: Tuple[int, int] = (3.0, 1.0)) -> None:
         super().__init__(scale)
@@ -672,11 +673,15 @@ class BanditBilliard(SubGoalBilliard):
 
 
 class GoalRewardSmallBilliard(GoalRewardBilliard):
-    MAZE_SIZE_SCALING: Scaling = Scaling(ant=1.5, point=4.0, swimmer=None)
-    OBJECT_BALL_SIZE: float = 0.5
+    MAZE_SIZE_SCALING: Scaling = Scaling(ant=2.0, point=4.0, swimmer=None)
+    OBJECT_BALL_SIZE: float = 0.4
+    GOAL_SIZE: float = 0.2
 
     def __init__(self, scale: float, goal: Tuple[float, float] = (-1.0, -2.0)) -> None:
         super().__init__(scale, goal)
+
+    def _threshold(self) -> float:
+        return self.OBJECT_BALL_SIZE + self.GOAL_SIZE
 
     @staticmethod
     def create_maze() -> List[List[MazeCell]]:

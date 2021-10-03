@@ -165,7 +165,28 @@ class MazeEnv(gym.Env):
                 elif struct.is_object_ball():
                     # Movable Ball
                     self.object_balls.append(f"objball_{i}_{j}")
-                    _add_object_ball(worldbody, i, j, x, y, self._task.OBJECT_BALL_SIZE)
+                    if model_cls.OBJBALL_TYPE == "hinge":
+                        _add_objball_hinge(
+                            worldbody,
+                            i,
+                            j,
+                            x,
+                            y,
+                            self._task.OBJECT_BALL_SIZE,
+                        )
+                    elif model_cls.OBJBALL_TYPE == "freejoint":
+                        _add_objball_freejoint(
+                            worldbody,
+                            i,
+                            j,
+                            x,
+                            y,
+                            self._task.OBJECT_BALL_SIZE,
+                        )
+                    else:
+                        raise ValueError(
+                            f"OBJBALL_TYPE is not registered for {model_cls}"
+                        )
 
         torso = tree.find(".//body[@name='torso']")
         geoms = torso.findall(".//geom")
@@ -185,7 +206,7 @@ class MazeEnv(gym.Env):
                 "site",
                 name=f"goal_site{i}",
                 pos=f"{goal.pos[0]} {goal.pos[1]} {z}",
-                size=f"{maze_size_scaling * 0.1}",
+                size=size,
                 rgba=goal.rgb.rgba_str(),
             )
 
@@ -461,7 +482,7 @@ class MazeEnv(gym.Env):
             self._websock_server_pipe.send(None)
 
 
-def _add_object_ball(
+def _add_objball_hinge(
     worldbody: ET.Element,
     i: str,
     j: str,
@@ -490,7 +511,6 @@ def _add_object_ball(
         name=f"objball_{i}_{j}_x",
         axis="1 0 0",
         pos="0 0 0",
-        range="-1 1",
         type="slide",
     )
     ET.SubElement(
@@ -499,7 +519,6 @@ def _add_object_ball(
         name=f"objball_{i}_{j}_y",
         axis="0 1 0",
         pos="0 0 0",
-        range="-1 1",
         type="slide",
     )
     ET.SubElement(
@@ -511,6 +530,30 @@ def _add_object_ball(
         type="hinge",
         limited="false",
     )
+
+
+def _add_objball_freejoint(
+    worldbody: ET.Element,
+    i: str,
+    j: str,
+    x: float,
+    y: float,
+    size: float,
+) -> None:
+    body = ET.SubElement(worldbody, "body", name=f"objball_{i}_{j}", pos=f"{x} {y} 0")
+    ET.SubElement(
+        body,
+        "geom",
+        type="sphere",
+        name=f"objball_{i}_{j}_geom",
+        size=f"{size}",  # Radius
+        pos=f"0.0 0.0 {size}",  # Z = size so that this ball can move!!
+        rgba=maze_task.BLUE.rgba_str(),
+        contype="1",
+        conaffinity="1",
+        solimp="0.9 0.99 0.001",
+    )
+    ET.SubElement(body, "freejoint", name=f"objball_{i}_{j}_root")
 
 
 def _add_movable_block(

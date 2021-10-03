@@ -39,6 +39,7 @@ class AntEnv(AgentModel):
     FILE: str = "ant.xml"
     ORI_IND: int = 3
     MANUAL_COLLISION: bool = False
+    OBJBALL_TYPE: str = "freejoint"
 
     def __init__(
         self,

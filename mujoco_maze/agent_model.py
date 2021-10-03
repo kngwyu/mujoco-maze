@@ -13,6 +13,7 @@ class AgentModel(ABC, MujocoEnv, EzPickle):
     MANUAL_COLLISION: bool
     ORI_IND: Optional[int] = None
     RADIUS: Optional[float] = None
+    OBJBALL_TYPE: Optional[str] = None
 
     def __init__(self, file_path: str, frame_skip: int) -> None:
         MujocoEnv.__init__(self, file_path, frame_skip)

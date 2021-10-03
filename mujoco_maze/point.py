@@ -19,6 +19,7 @@ class PointEnv(AgentModel):
     ORI_IND: int = 2
     MANUAL_COLLISION: bool = True
     RADIUS: float = 0.4
+    OBJBALL_TYPE: str = "hinge"
 
     VELOCITY_LIMITS: float = 10.0
 
