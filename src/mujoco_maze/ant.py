@@ -12,15 +12,15 @@ import numpy as np
 
 from mujoco_maze.agent_model import AgentModel
 
-ForwardRewardFn = Callable[[float, float], float]
+ForwardRewardFn = Callable[[np.ndarray], float]
 
 
-def forward_reward_vabs(xy_velocity: float) -> float:
+def forward_reward_vabs(xy_velocity: np.ndarray) -> float:
     return np.sum(np.abs(xy_velocity))
 
 
-def forward_reward_vnorm(xy_velocity: float) -> float:
-    return np.linalg.norm(xy_velocity)
+def forward_reward_vnorm(xy_velocity: np.ndarray) -> float:
+    return np.linalg.norm(xy_velocity)  # type: ignore
 
 
 def q_inv(a):
@@ -53,13 +53,13 @@ class AntEnv(AgentModel):
         self._forward_reward_fn = forward_reward_fn
         super().__init__(file_path, 5)
 
-    def _forward_reward(self, xy_pos_before: np.ndarray) -> Tuple[float, np.ndarray]:
-        xy_pos_after = self.sim.data.qpos[:2].copy()
+    def _forward_reward(self, xy_pos_before: np.ndarray) -> float:
+        xy_pos_after = self.data.qpos[:2].copy()
         xy_velocity = (xy_pos_after - xy_pos_before) / self.dt
         return self._forward_reward_fn(xy_velocity)
 
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, dict]:
-        xy_pos_before = self.sim.data.qpos[:2].copy()
+        xy_pos_before = self.data.qpos[:2].copy()
         self.do_simulation(action, self.frame_skip)
 
         forward_reward = self._forward_reward(xy_pos_before)
@@ -76,8 +76,8 @@ class AntEnv(AgentModel):
         # No cfrc observation
         return np.concatenate(
             [
-                self.sim.data.qpos.flat[:15],  # Ensures only ant obs.
-                self.sim.data.qvel.flat[:14],
+                self.data.qpos.flat[:15],  # Ensures only ant obs.
+                self.data.qvel.flat[:14],
             ]
         )
 
@@ -95,17 +95,10 @@ class AntEnv(AgentModel):
         self.set_state(qpos, qvel)
         return self._get_obs()
 
-    def get_ori(self) -> np.ndarray:
-        ori = [0, 1, 0, 0]
-        rot = self.sim.data.qpos[self.ORI_IND : self.ORI_IND + 4]  # take the quaternion
-        ori = q_mult(q_mult(rot, ori), q_inv(rot))[1:3]  # project onto x-y plane
-        ori = np.arctan2(ori[1], ori[0])
-        return ori
-
     def set_xy(self, xy: np.ndarray) -> None:
-        qpos = self.sim.data.qpos.copy()
+        qpos = self.data.qpos.copy()
         qpos[:2] = xy
-        self.set_state(qpos, self.sim.data.qvel)
+        self.set_state(qpos, self.data.qvel)
 
     def get_xy(self) -> np.ndarray:
-        return np.copy(self.sim.data.qpos[:2])
+        return np.copy(self.data.qpos[:2])
