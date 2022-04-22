@@ -71,9 +71,6 @@ class MazeTask(ABC):
         self.goals = []
         self.scale = scale
 
-    def sample_goals(self) -> bool:
-        return False
-
     def termination(self, obs: np.ndarray) -> bool:
         for goal in self.goals:
             if goal.neighbor(obs):
@@ -313,7 +310,7 @@ class DistRewardFall(GoalRewardFall, DistRewardMixIn):
 
 
 class GoalRewardMultiFall(GoalRewardUMaze):
-    MAZE_SIZE_SCALING: Scaling = Scaling(ant=2.0, point=4.0, swimmer=None)
+    MAZE_SIZE_SCALING: Scaling = Scaling(ant=2.0, point=None, swimmer=None)
     OBSERVE_BLOCKS: bool = True
     PENALTY: float = -0.0001
 

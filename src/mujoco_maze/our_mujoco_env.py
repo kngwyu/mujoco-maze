@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Optional, Tuple, Union
 
 import gym
 import mujoco
@@ -43,7 +43,8 @@ class OurMujocoEnv(gym.Env):
         space = spaces.Box(low, high, dtype=observation.dtype)
         self.observation_space: spaces.Box = space
 
-    def reset_model(self) -> None:
+    def reset_model(self) -> np.ndarray:
+        """Reset Mujoco model"""
         raise NotImplementedError
 
     def reset(
@@ -52,7 +53,7 @@ class OurMujocoEnv(gym.Env):
         seed: Optional[int] = None,
         return_info: bool = False,
         options: Optional[dict] = None,
-    ):
+    ) -> Union[np.ndarray, Tuple[np.ndarray, dict]]:
         super().reset(seed=seed)
         mujoco.mj_resetData(self.model, self.data)
         ob = self.reset_model()
@@ -92,7 +93,7 @@ class OurMujocoEnv(gym.Env):
     ):
         raise NotImplementedError()
 
-    def close(self):
+    def close(self) -> None:
         if self.viewer is not None:
             # self.viewer.finish()
             self.viewer = None

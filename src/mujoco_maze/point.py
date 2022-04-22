@@ -59,7 +59,7 @@ class PointEnv(AgentModel):
             ]
         )
 
-    def reset_model(self):
+    def reset_model(self) -> np.ndarray:
         qpos = self.init_qpos + self.np_random.uniform(
             size=self.model.nq,
             low=-0.1,

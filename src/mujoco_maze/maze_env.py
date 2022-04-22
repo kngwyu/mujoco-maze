@@ -373,19 +373,11 @@ class MazeEnv(gym.Env):
     def reset(self) -> np.ndarray:
         self.t = 0
         self.wrapped_env.reset()
-        # Samples a new goal
-        if self._task.sample_goals():
-            self.set_marker()
         # Samples a new start position
         if len(self._init_positions) > 1:
-            xy = np.random.choice(self._init_positions)
+            xy = np.random.choice(self._init_positions)  # type: ignore
             self.wrapped_env.set_xy(xy)
         return self._get_obs()
-
-    def set_marker(self) -> None:
-        for i, goal in enumerate(self._task.goals):
-            idx = self.model.site_name2id(f"goal{i}")
-            self.data.site_xpos[idx][: len(goal.pos)] = goal.pos
 
     def _render_image(self) -> np.ndarray:
         self._mj_offscreen_viewer._set_mujoco_buffers()
@@ -449,9 +441,10 @@ class MazeEnv(gym.Env):
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, dict]:
         self.t += 1
         if self.wrapped_env.MANUAL_COLLISION:
+            assert self._collision is not None
             old_pos = self.wrapped_env.get_xy()
             old_objballs = self._objball_positions()
-            inner_next_obs, inner_reward, _, info = self.wrapped_env.step(action)
+            _, inner_reward, _, info = self.wrapped_env.step(action)
             new_pos = self.wrapped_env.get_xy()
             new_objballs = self._objball_positions()
             # Checks that the new_position is in the wall
@@ -473,7 +466,7 @@ class MazeEnv(gym.Env):
                     idx = self.wrapped_env.model.body_name2id(name)
                     self.wrapped_env.data.xipos[idx][:2] = pos
         else:
-            inner_next_obs, inner_reward, _, info = self.wrapped_env.step(action)
+            _, inner_reward, _, info = self.wrapped_env.step(action)
         next_obs = self._get_obs()
         inner_reward = self._inner_reward_scaling * inner_reward
         outer_reward = self._task.reward(next_obs)
