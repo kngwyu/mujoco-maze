@@ -6,7 +6,6 @@ import fastapi
 import uvicorn
 from PIL import Image
 
-
 HTML = """
 <!DOCTYPE html>
 <html>
@@ -46,6 +45,7 @@ class _ServerWorker(mp.Process):
         self.pipe = pipe
         self.port = port
         self.video_frames = []
+        self.server = None
 
     def _run_server(self) -> None:
 
@@ -87,15 +87,16 @@ class _ServerWorker(mp.Process):
             return fastapi.responses.StreamingResponse(video, media_type="video/mp4")
 
         config = uvicorn.Config(app, port=self.port)
-        server = uvicorn.Server(config)
-        server.run()
+        self.server = uvicorn.Server(config)
+        self.server.run()
 
     def run(self) -> None:
         try:
             self._run_server()
         except KeyboardInterrupt:
-            pass
+            self.server.should_exit = True
         except Exception as e:
+            self.server.should_exit = True
             print("Exception in websocket server")
             raise e
 

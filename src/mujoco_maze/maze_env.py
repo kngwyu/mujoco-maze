@@ -6,14 +6,15 @@ Based on `models`_ and `rllab`_.
 .. _rllab: https://github.com/rll/rllab
 """
 
+import io
 import itertools as it
 import os
-import tempfile
 import xml.etree.ElementTree as ET
-from typing import Any, List, Optional, Tuple, Type
+from typing import Any, List, Optional, Tuple, Type, Union
 
 import gym
 import numpy as np
+from gym import spaces
 
 from mujoco_maze import maze_env_utils, maze_task
 from mujoco_maze.agent_model import AgentModel
@@ -22,12 +23,17 @@ from mujoco_maze.agent_model import AgentModel
 MODEL_DIR = os.path.dirname(os.path.abspath(__file__)) + "/assets"
 
 
+def _find(elem: Union[ET.ElementTree, ET.Element], query: str) -> ET.Element:
+    result = elem.find(query)
+    assert result is not None, f"Query {query} resulted None for {elem}"
+    return result
+
+
 class MazeEnv(gym.Env):
     def __init__(
         self,
         model_cls: Type[AgentModel],
         maze_task: Type[maze_task.MazeTask] = maze_task.MazeTask,
-        include_position: bool = True,
         maze_height: float = 0.5,
         maze_size_scaling: float = 4.0,
         inner_reward_scaling: float = 1.0,
@@ -95,19 +101,20 @@ class MazeEnv(gym.Env):
         # Let's create MuJoCo XML
         xml_path = os.path.join(MODEL_DIR, model_cls.FILE)
         tree = ET.parse(xml_path)
-        worldbody = tree.find(".//worldbody")
+        worldbody = _find(tree, ".//worldbody")
 
         height_offset = 0.0
         if self.elevated:
             # Increase initial z-pos of ant.
             height_offset = height * size_scaling
-            torso = tree.find(".//body[@name='torso']")
+            torso = _find(tree, ".//body[@name='torso']")
             torso.set("pos", f"0 0 {0.75 + height_offset:.2f}")
         if self.blocks:
             # If there are movable blocks, change simulation settings to perform
             # better contact detection.
-            default = tree.find(".//default")
-            default.find(".//geom").set("solimp", ".995 .995 .01")
+            default = _find(tree, ".//default")
+            default_geom = _find(default, ".//geom")
+            default_geom.set("solimp", ".995 .995 .01")
 
         self.movable_blocks = []
         self.object_balls = []
@@ -188,7 +195,7 @@ class MazeEnv(gym.Env):
                             f"OBJBALL_TYPE is not registered for {model_cls}"
                         )
 
-        torso = tree.find(".//body[@name='torso']")
+        torso = _find(tree, ".//body[@name='torso']")
         geoms = torso.findall(".//geom")
         for geom in geoms:
             if "name" not in geom.attrib:
@@ -210,10 +217,10 @@ class MazeEnv(gym.Env):
                 rgba=goal.rgb.rgba_str(),
             )
 
-        _, file_path = tempfile.mkstemp(text=True, suffix=".xml")
-        tree.write(file_path)
         self.world_tree = tree
-        self.wrapped_env = model_cls(file_path=file_path, **kwargs)
+        bytes_io = io.BytesIO()
+        tree.write(bytes_io)
+        self.wrapped_env = model_cls(bytes_io.getvalue(), **kwargs)
         self.observation_space = self._get_obs_space()
         self._websock_port = websock_port
         self._camera_move_x = camera_move_x
@@ -227,21 +234,18 @@ class MazeEnv(gym.Env):
     def has_extended_obs(self) -> bool:
         return self._top_down_view or self._observe_blocks or self._observe_balls
 
-    def get_ori(self) -> float:
-        return self.wrapped_env.get_ori()
-
-    def _get_obs_space(self) -> gym.spaces.Box:
+    def _get_obs_space(self) -> spaces.Box:
         shape = self._get_obs().shape
         high = np.inf * np.ones(shape, dtype=np.float32)
         low = -high
         # Set velocity limits
-        wrapped_obs_space = self.wrapped_env.observation_space
+        wrapped_obs_space: spaces.Box = self.wrapped_env.observation_space
         high[: wrapped_obs_space.shape[0]] = wrapped_obs_space.high
         low[: wrapped_obs_space.shape[0]] = wrapped_obs_space.low
         # Set coordinate limits
         low[0], high[0], low[1], high[1] = self._xy_limits()
         # Set orientation limits
-        return gym.spaces.Box(low, high)
+        return spaces.Box(low, high)
 
     def _xy_limits(self) -> Tuple[float, float, float, float]:
         xmin, ymin, xmax, ymax = 100, 100, -100, -100
@@ -369,19 +373,11 @@ class MazeEnv(gym.Env):
     def reset(self) -> np.ndarray:
         self.t = 0
         self.wrapped_env.reset()
-        # Samples a new goal
-        if self._task.sample_goals():
-            self.set_marker()
         # Samples a new start position
         if len(self._init_positions) > 1:
-            xy = np.random.choice(self._init_positions)
+            xy = np.random.choice(self._init_positions)  # type: ignore
             self.wrapped_env.set_xy(xy)
         return self._get_obs()
-
-    def set_marker(self) -> None:
-        for i, goal in enumerate(self._task.goals):
-            idx = self.model.site_name2id(f"goal{i}")
-            self.data.site_xpos[idx][: len(goal.pos)] = goal.pos
 
     def _render_image(self) -> np.ndarray:
         self._mj_offscreen_viewer._set_mujoco_buffers()
@@ -399,10 +395,11 @@ class MazeEnv(gym.Env):
         if self._camera_zoom is not None:
             viewer.move_camera(const.MOUSE_ZOOM, 0, self._camera_zoom)
 
-    def render(self, mode="human", **kwargs) -> Optional[np.ndarray]:
+    def render(self, mode: str = "human", **kwargs) -> Optional[np.ndarray]:
         if mode == "human" and self._websock_port is not None:
             if self._mj_offscreen_viewer is None:
                 from mujoco_py import MjRenderContextOffscreen as MjRCO
+
                 from mujoco_maze.websock_viewer import start_server
 
                 self._mj_offscreen_viewer = MjRCO(self.wrapped_env.sim)
@@ -436,7 +433,7 @@ class MazeEnv(gym.Env):
                 coords.append((j * size_scaling, i * size_scaling))
         return coords
 
-    def _objball_positions(self) -> None:
+    def _objball_positions(self) -> List[np.ndarray]:
         return [
             self.wrapped_env.get_body_com(name)[:2].copy() for name in self.object_balls
         ]
@@ -444,9 +441,10 @@ class MazeEnv(gym.Env):
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, dict]:
         self.t += 1
         if self.wrapped_env.MANUAL_COLLISION:
+            assert self._collision is not None
             old_pos = self.wrapped_env.get_xy()
             old_objballs = self._objball_positions()
-            inner_next_obs, inner_reward, _, info = self.wrapped_env.step(action)
+            _, inner_reward, _, info = self.wrapped_env.step(action)
             new_pos = self.wrapped_env.get_xy()
             new_objballs = self._objball_positions()
             # Checks that the new_position is in the wall
@@ -468,7 +466,7 @@ class MazeEnv(gym.Env):
                     idx = self.wrapped_env.model.body_name2id(name)
                     self.wrapped_env.data.xipos[idx][:2] = pos
         else:
-            inner_next_obs, inner_reward, _, info = self.wrapped_env.step(action)
+            _, inner_reward, _, info = self.wrapped_env.step(action)
         next_obs = self._get_obs()
         inner_reward = self._inner_reward_scaling * inner_reward
         outer_reward = self._task.reward(next_obs)
@@ -484,14 +482,14 @@ class MazeEnv(gym.Env):
 
 def _add_objball_hinge(
     worldbody: ET.Element,
-    i: str,
-    j: str,
+    i: int,
+    j: int,
     x: float,
     y: float,
     size: float,
 ) -> None:
     body = ET.SubElement(worldbody, "body", name=f"objball_{i}_{j}", pos=f"{x} {y} 0")
-    mass = 0.0001 * (size ** 3)
+    mass = 0.0001 * (size**3)
     ET.SubElement(
         body,
         "geom",
@@ -534,8 +532,8 @@ def _add_objball_hinge(
 
 def _add_objball_freejoint(
     worldbody: ET.Element,
-    i: str,
-    j: str,
+    i: int,
+    j: int,
     x: float,
     y: float,
     size: float,
@@ -559,8 +557,8 @@ def _add_objball_freejoint(
 def _add_movable_block(
     worldbody: ET.Element,
     struct: maze_env_utils.MazeCell,
-    i: str,
-    j: str,
+    i: int,
+    j: int,
     size_scaling: float,
     x: float,
     y: float,

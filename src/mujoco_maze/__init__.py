@@ -6,7 +6,7 @@ A maze environment using mujoco that supports custom tasks and robots.
 """
 
 
-import gym
+from gym.envs.registration import register
 
 from mujoco_maze.ant import AntEnv
 from mujoco_maze.maze_task import TaskRegistry
@@ -19,7 +19,7 @@ for maze_id in TaskRegistry.keys():
         point_scale = task_cls.MAZE_SIZE_SCALING.point
         if point_scale is not None:
             # Point
-            gym.envs.register(
+            register(
                 id=f"Point{maze_id}-v{i}",
                 entry_point="mujoco_maze.maze_env:MazeEnv",
                 kwargs=dict(
@@ -35,7 +35,7 @@ for maze_id in TaskRegistry.keys():
         ant_scale = task_cls.MAZE_SIZE_SCALING.ant
         if ant_scale is not None:
             # Ant
-            gym.envs.register(
+            register(
                 id=f"Ant{maze_id}-v{i}",
                 entry_point="mujoco_maze.maze_env:MazeEnv",
                 kwargs=dict(
@@ -51,7 +51,7 @@ for maze_id in TaskRegistry.keys():
         swimmer_scale = task_cls.MAZE_SIZE_SCALING.swimmer
         if swimmer_scale is not None:
             # Reacher
-            gym.envs.register(
+            register(
                 id=f"Reacher{maze_id}-v{i}",
                 entry_point="mujoco_maze.maze_env:MazeEnv",
                 kwargs=dict(
@@ -64,7 +64,7 @@ for maze_id in TaskRegistry.keys():
                 reward_threshold=task_cls.REWARD_THRESHOLD,
             )
             # Swimmer
-            gym.envs.register(
+            register(
                 id=f"Swimmer{maze_id}-v{i}",
                 entry_point="mujoco_maze.maze_env:MazeEnv",
                 kwargs=dict(

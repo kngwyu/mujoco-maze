@@ -6,36 +6,22 @@ name: CI
 # events but only for the main branch
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   pull_request:
-    branches: [ main ]
 
 jobs:
   ci:
     strategy:
       matrix:
-        python-version: [3.6, 3.7, 3.8]
-    runs-on: ubuntu-18.04
-    env:
-      LD_LIBRARY_PATH: /home/runner/.mujoco/mujoco200/bin
+        python-version: ["3.7", "3.8", "3.9", "3.10"]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install Poetry
-        run: pip install poetry
-      - name: Install Mujoco Dependencies
-        run: sudo apt update && sudo apt install libosmesa6-dev libglfw3 libglew-dev patchelf libgl1-mesa-glx -y
-      - name: Install Mujoco
-        run: |
-          mkdir ~/.mujoco
-          curl -sO https://www.roboti.us/download/mujoco200_linux.zip
-          unzip mujoco200_linux.zip
-          mv mujoco200_linux ~/.mujoco/mujoco200
-          echo "${{ secrets.MUJOCO_KEY }}" > ~/.mujoco/mjkey.txt
+      - name: Install Nox
+        run: pip install nox
       - name: Run tests
-        run: |
-          poetry install
-          poetry run python -m pip freeze
-          poetry run test
+        run: nox --session=tests
