@@ -15,8 +15,6 @@ class OurMujocoEnv(gym.Env):
         self.frame_skip = frame_skip
         self.model = mujoco.MjModel.from_xml_string(xml)
         self.data = mujoco.MjData(self.model)
-        self.viewer = None
-        self._viewers = {}
 
         self.metadata = {
             "render_modes": ["human", "rgb_array", "depth_array"],
@@ -92,23 +90,6 @@ class OurMujocoEnv(gym.Env):
         camera_name=None,
     ):
         raise NotImplementedError()
-
-    def close(self) -> None:
-        if self.viewer is not None:
-            # self.viewer.finish()
-            self.viewer = None
-            self._viewers = {}
-
-    def _get_viewer(self, mode):
-        self.viewer = self._viewers.get(mode)
-        if self.viewer is None:
-            if mode == "human":
-                self.viewer = mujoco_py.MjViewer(self.sim)
-            elif mode == "rgb_array" or mode == "depth_array":
-                self.viewer = mujoco_py.MjRenderContextOffscreen(self.sim, -1)
-
-            self._viewers[mode] = self.viewer
-        return self.viewer
 
     def get_body_com(self, body_name: str) -> np.ndarray:
         # https://mujoco.readthedocs.io/en/latest/python.html#named-access

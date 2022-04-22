@@ -395,7 +395,7 @@ class MazeEnv(gym.Env):
         if self._camera_zoom is not None:
             viewer.move_camera(const.MOUSE_ZOOM, 0, self._camera_zoom)
 
-    def render(self, mode="human", **kwargs) -> Optional[np.ndarray]:
+    def render(self, mode: str = "human", **kwargs) -> Optional[np.ndarray]:
         if mode == "human" and self._websock_port is not None:
             if self._mj_offscreen_viewer is None:
                 from mujoco_py import MjRenderContextOffscreen as MjRCO
