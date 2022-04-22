@@ -310,11 +310,11 @@ class DistRewardFall(GoalRewardFall, DistRewardMixIn):
 
 
 class GoalRewardMultiFall(GoalRewardUMaze):
-    MAZE_SIZE_SCALING: Scaling = Scaling(ant=2.0, point=None, swimmer=None)
+    MAZE_SIZE_SCALING: Scaling = Scaling(ant=2.0, point=4.0, swimmer=None)
     OBSERVE_BLOCKS: bool = True
     PENALTY: float = -0.0001
 
-    def __init__(self, scale: float, goal: Tuple[int, int] = (3.0, 1.0)) -> None:
+    def __init__(self, scale: float, goal: Tuple[float, float] = (3.0, 1.0)) -> None:
         super().__init__(scale)
         self.goals = [MazeGoal(np.array([*goal, 0.5]) * scale)]
 
@@ -346,7 +346,7 @@ class GoalReward2Rooms(MazeTask):
     PENALTY: float = -0.0001
     MAZE_SIZE_SCALING: Scaling = Scaling(ant=4.0, point=4.0, swimmer=4.0)
 
-    def __init__(self, scale: float, goal: Tuple[int, int] = (4.0, -2.0)) -> None:
+    def __init__(self, scale: float, goal: Tuple[float, float] = (4.0, -2.0)) -> None:
         super().__init__(scale)
         self.goals = [MazeGoal(np.array(goal) * scale)]
 
@@ -632,9 +632,12 @@ class GoalRewardBilliard(MazeTask):
 
     def __init__(self, scale: float, goal: Tuple[float, float] = (2.0, -3.0)) -> None:
         super().__init__(scale)
-        goal = np.array(goal) * scale
         self.goals.append(
-            MazeGoal(goal, threshold=self._threshold(), custom_size=self.GOAL_SIZE)
+            MazeGoal(
+                np.array(goal) * scale,
+                threshold=self._threshold(),
+                custom_size=self.GOAL_SIZE,
+            )
         )
 
     def _threshold(self) -> float:
