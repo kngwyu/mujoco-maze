@@ -111,8 +111,8 @@ class OurMujocoEnv(gym.Env):
         return self.viewer
 
     def get_body_com(self, body_name: str) -> np.ndarray:
-        body = self.model.body(body_name)
-        return body.pos
+        # https://mujoco.readthedocs.io/en/latest/python.html#named-access
+        return self.data.body(body_name).xpos
 
     def state_vector(self) -> np.ndarray:
         return np.concatenate([self.data.qpos.flat, self.data.qvel.flat])
