@@ -6,6 +6,7 @@ from typing import Optional
 import numpy as np
 from gym.envs.mujoco.mujoco_env import MujocoEnv
 from gym.utils import EzPickle
+from gym.spaces import Space
 
 
 class AgentModel(ABC, MujocoEnv, EzPickle):
@@ -15,8 +16,8 @@ class AgentModel(ABC, MujocoEnv, EzPickle):
     RADIUS: Optional[float] = None
     OBJBALL_TYPE: Optional[str] = None
 
-    def __init__(self, file_path: str, frame_skip: int) -> None:
-        MujocoEnv.__init__(self, file_path, frame_skip)
+    def __init__(self, file_path: str, frame_skip: int, observation_space: Space) -> None:
+        MujocoEnv.__init__(self, file_path, frame_skip, observation_space)
         EzPickle.__init__(self)
 
     def close(self):
