@@ -18,6 +18,8 @@ import numpy as np
 from mujoco_maze import maze_env_utils, maze_task
 from mujoco_maze.agent_model import AgentModel
 
+from gym.core import ObsType
+
 # Directory that contains mujoco xml files.
 MODEL_DIR = os.path.dirname(os.path.abspath(__file__)) + "/assets"
 
@@ -366,7 +368,7 @@ class MazeEnv(gym.Env):
         obs = np.concatenate([wrapped_obs[:3]] + additional_obs + [wrapped_obs[3:]])
         return np.concatenate([obs, *view, np.array([self.t * 0.001])])
 
-    def reset(self) -> np.ndarray:
+    def reset(self, **kwargs) -> Tuple[ObsType, dict]:
         self.t = 0
         self.wrapped_env.reset()
         # Samples a new goal
@@ -376,7 +378,8 @@ class MazeEnv(gym.Env):
         if len(self._init_positions) > 1:
             xy = np.random.choice(self._init_positions)
             self.wrapped_env.set_xy(xy)
-        return self._get_obs()
+        info = {}
+        return self._get_obs(), info
 
     def set_marker(self) -> None:
         for i, goal in enumerate(self._task.goals):
@@ -410,10 +413,11 @@ class MazeEnv(gym.Env):
                 self._websock_server_pipe = start_server(self._websock_port)
             return self._websock_server_pipe.send(self._render_image())
         else:
+            self.wrapped_env.render_mode = mode
             if self.wrapped_env.viewer is None:
-                self.wrapped_env.render(mode, **kwargs)
+                self.wrapped_env.render()
                 self._maybe_move_camera(self.wrapped_env.viewer)
-            return self.wrapped_env.render(mode, **kwargs)
+            return self.wrapped_env.render()
 
     @property
     def action_space(self):
